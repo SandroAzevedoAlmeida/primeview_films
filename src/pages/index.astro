@@ -1,17 +1,39 @@
 ---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import Header from '../components/Header.astro';
+import SocialLinks from '../components/SocialLinks.astro';
+import ContactForm from '../components/ContactForm.astro';
+import WhatsAppButton from '../components/WhatsAppButton.astro';
+import { company } from '../config/company';
+import { social } from '../config/social';
 
+const whatsappMessage = encodeURIComponent('Olá! Vim pelo site da PrimeView Filmes e gostaria de solicitar um orçamento.');
+const whatsappUrl = `${company.whatsapp}?text=${whatsappMessage}`;
+const services = [
+  ['01', 'Vídeos imobiliários', 'Vídeos cinematográficos, verticais e horizontais para imóveis, campanhas e redes sociais.'],
+  ['02', 'Drone 4K', 'Imagens aéreas para imóveis, condomínios, terrenos, fachadas e empreendimentos.'],
+  ['03', 'Tour Virtual 360°', 'Experiência imersiva para explorar ambientes remotamente, com liberdade e contexto.'],
+  ['04', 'Fotografia imobiliária', 'Luz, enquadramento, arquitetura e composição para valorizar cada ambiente.'],
+  ['05', 'Conteúdo para corretores', 'Produções para autoridade digital, apresentação profissional e redes sociais.'],
+];
+const audiences = ['Corretores', 'Imobiliárias', 'Construtoras', 'Incorporadoras', 'Empreendimentos', 'Proprietários'];
+const process = [['01', 'Briefing'], ['02', 'Planejamento'], ['03', 'Captação'], ['04', 'Edição'], ['05', 'Aprovação'], ['06', 'Entrega']];
 ---
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<link rel="icon" href="/favicon.ico" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+<BaseLayout>
+  <Header />
+  <main>
+    <section class="hero" id="inicio"><div class="hero-image" role="img" aria-label="Arquitetura contemporânea ao entardecer"></div><div class="hero-shade"></div><div class="container hero-content"><p class="eyebrow">Produção audiovisual imobiliária <span></span> Serra, Espírito Santo</p><h1>Transformamos imóveis<br /><em>em experiências visuais.</em></h1><p class="hero-copy">Produção audiovisual especializada em valorizar imóveis, empreendimentos e marcas do mercado imobiliário.</p><div class="hero-actions"><a class="button button-gold" href={whatsappUrl} target="_blank" rel="noopener noreferrer">Solicitar orçamento <span>↗</span></a><a class="text-link" href="#servicos">Conhecer serviços <span>↓</span></a></div><div class="hero-index"><span>01</span><span class="index-line"></span><span>PrimeView Filmes</span></div></div><div class="hero-services" aria-label="Serviços principais"><span>Vídeos</span><span>Drone 4K</span><span>Tour Virtual 360°</span><span>Fotografia</span></div></section>
+    <section class="section about" id="sobre"><div class="container split-grid"><div><p class="eyebrow">01 / Sobre a PrimeView</p><h2>Não registramos apenas espaços.<br /><em>Criamos percepção de valor.</em></h2></div><div class="section-copy"><p>Um imóvel começa a ser percebido antes mesmo da primeira visita. Nossa especialidade é construir essa primeira impressão com imagem, ritmo e intenção.</p><p>Da captação à entrega, cada escolha visual traduz a arquitetura e a atmosfera do projeto com clareza e sofisticação.</p><a class="text-link" href="#contato">Fale sobre seu projeto <span>↗</span></a></div></div></section>
+    <section class="section services" id="servicos"><div class="container"><div class="section-heading"><div><p class="eyebrow">02 / O que fazemos</p><h2>Imagem com <em>intenção.</em></h2></div><p>Conteúdo pensado para apresentar espaços, fortalecer marcas e aproximar pessoas dos ambientes.</p></div><div class="service-grid">{services.map(([number, title, description]) => <article class="service-item"><span class="service-number">{number}</span><h3>{title}</h3><p>{description}</p><span class="service-arrow" aria-hidden="true">↗</span></article>)}<article class="service-item service-soon"><span class="service-number">06</span><div class="soon-label">Em breve</div><h3>Visualização com inteligência artificial</h3><p>Soluções de visualização imobiliária com inteligência artificial estão em desenvolvimento.</p></article></div></div></section>
+    <section class="statement"><div class="container statement-inner"><p class="eyebrow">03 / O olhar PrimeView</p><h2>O imóvel pode ser o mesmo.<br /><em>A percepção de valor, não.</em></h2><div class="pillars"><span>Apresentação profissional</span><span>Percepção de valor</span><span>Autoridade digital</span><span>Experiência visual</span></div></div></section>
+    <section class="section audience"><div class="container split-grid"><div><p class="eyebrow">04 / Para quem trabalhamos</p><h2>Para quem entende que<br /><em>imagem é posicionamento.</em></h2></div><div class="audience-list">{audiences.map((audience, index) => <div><span>0{index + 1}</span><strong>{audience}</strong><b aria-hidden="true">↗</b></div>)}</div></div></section>
+    <section class="section portfolio" id="portfolio"><div class="container"><div class="section-heading"><div><p class="eyebrow">05 / Portfólio</p><h2>Projetos que pedem<br /><em>um olhar atento.</em></h2></div><p>A seleção de trabalhos reais da PrimeView será apresentada aqui. Estamos preparando este espaço para receber cada produção com o contexto que ela merece.</p></div><div class="portfolio-empty"><span class="empty-mark">PV</span><p>Novos projetos em edição</p><small>Em breve, uma seleção de produções audiovisuais imobiliárias.</small></div></div></section>
+    <section class="section process" id="processo"><div class="container"><p class="eyebrow">06 / Como acontece</p><div class="process-layout"><h2>Do primeiro briefing<br /><em>à imagem final.</em></h2><div class="process-list">{process.map(([number, title]) => <div><span>{number}</span><strong>{title}</strong><i aria-hidden="true">↗</i></div>)}</div></div></div></section>
+    <section class="tour-band"><div class="container tour-content"><p class="eyebrow">07 / Experiência imersiva</p><h2>O espaço continua<br /><em>mesmo quando você sai.</em></h2><p>Com o Tour Virtual 360°, ambientes podem ser explorados remotamente, a qualquer hora, com uma compreensão mais completa antes da visita presencial.</p><a class="button button-outline" href="#contato">Conhecer o Tour 360° <span>↗</span></a></div></section>
+    <section class="cta-band"><div class="container"><p class="eyebrow">08 / Vamos conversar</p><h2>Seu imóvel merece<br /><em>uma apresentação à altura.</em></h2><a class="button button-gold" href={whatsappUrl} target="_blank" rel="noopener noreferrer">Solicite seu orçamento <span>↗</span></a></div></section>
+    <section class="section social-section"><div class="container section-heading"><div><p class="eyebrow">09 / Presença</p><h2>Siga a <em>PrimeView.</em></h2></div><p>Acompanhe nossos projetos, bastidores, produções e conteúdos nas redes sociais.</p></div><div class="container"><SocialLinks /></div></section>
+    <section class="section contact" id="contato"><div class="container contact-layout"><div><p class="eyebrow">10 / Contato</p><h2>Uma boa conversa<br /><em>começa por aqui.</em></h2><p class="contact-intro">Conte o que você está construindo. A gente pensa na melhor forma de apresentar.</p><div class="contact-details"><a href={whatsappUrl} target="_blank" rel="noopener noreferrer"><small>WhatsApp</small>{company.whatsappDisplay}</a><a href={`mailto:${company.email}`}><small>E-mail</small>{company.email}</a><p><small>Base</small>{company.city} — {company.state}</p></div></div><ContactForm /></div></section>
+  </main>
+  <footer class="site-footer"><div class="container footer-inner"><img src="/assets/brand/logo-primeview-white.png" alt="PrimeView Filmes" width="180" height="65" /><nav aria-label="Navegação do rodapé"><a href="#sobre">Sobre</a><a href="#servicos">Serviços</a><a href="#portfolio">Portfólio</a><a href="#contato">Contato</a></nav><a href={social.instagram} target="_blank" rel="noopener noreferrer">@primeview_filmes ↗</a><small>© PrimeView Filmes. Todos os direitos reservados.</small></div></footer><WhatsAppButton />
+</BaseLayout>

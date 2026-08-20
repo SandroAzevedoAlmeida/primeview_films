@@ -1,0 +1,32 @@
+<header class="site-header" data-header>
+  <div class="container header-inner">
+    <a class="brand-mark" href="#inicio" aria-label="PrimeView Filmes, início">
+      <img src="/assets/brand/logo-primeview-white.png" alt="PrimeView Filmes" width="240" height="86" />
+    </a>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" data-menu-toggle>
+      <span class="sr-only">Abrir menu</span><i></i><i></i>
+    </button>
+    <nav id="site-navigation" class="site-nav" aria-label="Navegação principal" data-navigation>
+      <a href="#sobre">Sobre</a><a href="#servicos">Serviços</a><a href="#portfolio">Portfólio</a><a href="#processo">Processo</a><a href="#contato">Contato</a>
+      <a class="nav-cta" href="https://wa.me/5527981230085?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20PrimeView%20Filmes%20e%20gostaria%20de%20solicitar%20um%20or%C3%A7amento." target="_blank" rel="noopener noreferrer">Orçamento <span aria-hidden="true">↗</span></a>
+    </nav>
+  </div>
+</header>
+
+<script>
+  const header = document.querySelector<HTMLElement>('[data-header]');
+  const toggle = document.querySelector<HTMLButtonElement>('[data-menu-toggle]');
+  const navigation = document.querySelector<HTMLElement>('[data-navigation]');
+  toggle?.addEventListener('click', () => {
+    const open = toggle.getAttribute('aria-expanded') === 'true';
+    toggle.setAttribute('aria-expanded', String(!open));
+    navigation?.classList.toggle('is-open', !open);
+  });
+  navigation?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
+    toggle?.setAttribute('aria-expanded', 'false');
+    navigation.classList.remove('is-open');
+  }));
+  const onScroll = () => header?.classList.toggle('is-scrolled', window.scrollY > 24);
+  window.addEventListener('scroll', onScroll, { passive: true });
+  onScroll();
+</script>

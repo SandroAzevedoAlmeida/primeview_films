@@ -1,0 +1,16 @@
+---
+import { social } from '../config/social';
+
+const links = [
+  ['Instagram', social.instagram, '@primeview_filmes'],
+  ['YouTube', social.youtube, '@primeview_filmesbr'],
+  ['Facebook', social.facebook, 'Perfil oficial'],
+  ['TikTok', social.tiktok, '@primeview.filmes'],
+  ['WhatsApp', social.whatsapp, 'Fale conosco'],
+  ['Threads', social.threads, '@primeview_filmes'],
+];
+---
+
+<div class="social-links">
+  {links.map(([name, href, detail]) => <a href={href} target="_blank" rel="noopener noreferrer"><span>{name}</span><small>{detail}</small><b aria-hidden="true">↗</b></a>)}
+</div>
