@@ -1,14 +1,18 @@
+---
+import { social } from '../config/social';
+---
+
 <header class="site-header" data-header>
   <div class="container header-inner">
     <a class="brand-mark" href="#inicio" aria-label="PrimeView Filmes, início">
-      <img src="/assets/brand/logo-primeview-white.png" alt="PrimeView Filmes" width="240" height="86" />
+      <img src="/assets/brand/logo-primeview.png" alt="PrimeView Filmes" width="1254" height="1254" />
     </a>
-    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" data-menu-toggle>
+    <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-navigation" aria-label="Abrir menu" data-menu-toggle>
       <span class="sr-only">Abrir menu</span><i></i><i></i>
     </button>
     <nav id="site-navigation" class="site-nav" aria-label="Navegação principal" data-navigation>
-      <a href="#sobre">Sobre</a><a href="#servicos">Serviços</a><a href="#portfolio">Portfólio</a><a href="#processo">Processo</a><a href="#contato">Contato</a>
-      <a class="nav-cta" href="https://wa.me/5527981230085?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20PrimeView%20Filmes%20e%20gostaria%20de%20solicitar%20um%20or%C3%A7amento." target="_blank" rel="noopener noreferrer">Orçamento <span aria-hidden="true">↗</span></a>
+      <a href="#inicio">Início</a><a href="#servicos">Serviços</a><a href="#portfolio">Portfólio</a><a href="#sobre">Sobre</a><a href="#contato">Contato</a>
+      <a class="nav-cta" href={`${social.whatsapp}?text=Ol%C3%A1%21%20Vim%20pelo%20site%20da%20PrimeView%20Filmes%20e%20gostaria%20de%20solicitar%20um%20or%C3%A7amento.`} target="_blank" rel="noopener noreferrer">Orçamento <span aria-hidden="true">↗</span></a>
     </nav>
   </div>
 </header>
@@ -20,12 +24,22 @@
   toggle?.addEventListener('click', () => {
     const open = toggle.getAttribute('aria-expanded') === 'true';
     toggle.setAttribute('aria-expanded', String(!open));
+    toggle.setAttribute('aria-label', open ? 'Abrir menu' : 'Fechar menu');
     navigation?.classList.toggle('is-open', !open);
   });
   navigation?.querySelectorAll('a').forEach((link) => link.addEventListener('click', () => {
     toggle?.setAttribute('aria-expanded', 'false');
+    toggle?.setAttribute('aria-label', 'Abrir menu');
     navigation.classList.remove('is-open');
   }));
+  toggle?.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', 'Abrir menu');
+      navigation?.classList.remove('is-open');
+      toggle.focus();
+    }
+  });
   const onScroll = () => header?.classList.toggle('is-scrolled', window.scrollY > 24);
   window.addEventListener('scroll', onScroll, { passive: true });
   onScroll();
