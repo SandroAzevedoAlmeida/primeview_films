@@ -3,6 +3,7 @@ import BaseLayout from '../layouts/BaseLayout.astro';
 import Header from '../components/Header.astro';
 import SocialLinks from '../components/SocialLinks.astro';
 import ContactForm from '../components/ContactForm.astro';
+import VirtualBusinessCard from '../components/VirtualBusinessCard.astro';
 import WhatsAppButton from '../components/WhatsAppButton.astro';
 import { company } from '../config/company';
 import { social } from '../config/social';
@@ -33,7 +34,7 @@ const process = [['01', 'Briefing'], ['02', 'Planejamento'], ['03', 'Captação'
     <section class="tour-band"><div class="container tour-content"><p class="eyebrow">07 / Experiência imersiva</p><h2>O espaço continua<br /><em>mesmo quando você sai.</em></h2><p>Com o Tour Virtual 360°, ambientes podem ser explorados remotamente, a qualquer hora, com uma compreensão mais completa antes da visita presencial.</p><a class="button button-outline" href="#contato">Conhecer o Tour 360° <span>↗</span></a></div></section>
     <section class="cta-band"><div class="container"><p class="eyebrow">08 / Vamos conversar</p><h2>Seu imóvel merece<br /><em>uma apresentação à altura.</em></h2><a class="button button-gold" href={whatsappUrl} target="_blank" rel="noopener noreferrer">Solicite seu orçamento <span>↗</span></a></div></section>
     <section class="section social-section"><div class="container section-heading"><div><p class="eyebrow">09 / Presença</p><h2>Siga a <em>PrimeView.</em></h2></div><p>Acompanhe nossos projetos, bastidores, produções e conteúdos nas redes sociais.</p></div><div class="container"><SocialLinks /></div></section>
-    <section class="section contact" id="contato"><div class="container contact-layout"><div><p class="eyebrow">10 / Contato</p><h2>Uma boa conversa<br /><em>começa por aqui.</em></h2><p class="contact-intro">Conte o que você está construindo. A gente pensa na melhor forma de apresentar.</p></div><ContactForm /></div></section>
+    <section class="section contact" id="contato"><div class="container contact-layout"><div class="contact-heading"><p class="eyebrow">10 / Contato</p><h2>Uma boa conversa<br /><em>começa por aqui.</em></h2><p class="contact-intro">Conte o que você está construindo. A gente pensa na melhor forma de apresentar.</p></div><ContactForm /><VirtualBusinessCard /></div></section>
   </main>
   <footer class="site-footer"><div class="container footer-inner"><img src="/assets/brand/logo-primeview.png" alt="PrimeView Filmes" width="1254" height="1254" /><nav aria-label="Navegação do rodapé"><a href="#inicio">Início</a><a href="#servicos">Serviços</a><a href="#portfolio">Portfólio</a><a href="#sobre">Sobre</a><a href="#contato">Contato</a></nav><a href={social.instagram} target="_blank" rel="noopener noreferrer">@primeview_filmes ↗</a><small>© PrimeView Filmes. Todos os direitos reservados.</small></div></footer><WhatsAppButton />
 </BaseLayout>
