@@ -116,15 +116,15 @@ section[id], .hero { scroll-margin-top:var(--pv-header-height); }
 .contact-heading { grid-column:1/-1; max-width:720px; }
 .contact-intro { margin-bottom:0; }
 .contact-form { width:100%; max-width:920px; margin-inline:auto; }
-.virtual-card-composition { --card-width:min(100%,430px); --card-aspect-ratio:1920 / 819; --card-radius:14px; position:relative; width:min(100%,480px); aspect-ratio:1.04 / 1; min-height:380px; margin-inline:auto; isolation:isolate; }
-.virtual-card { position:absolute; width:var(--card-width); aspect-ratio:var(--card-aspect-ratio); box-sizing:border-box; overflow:hidden; border:1px solid rgba(212,175,55,.58); border-radius:var(--card-radius); background:var(--pv-black); box-shadow:0 0 0 1px rgba(212,175,55,.18),0 22px 55px rgba(0,0,0,.34); }
+.virtual-card-composition { --card-width:min(94%,560px); --card-radius:14px; position:relative; display:grid; grid-template-columns:1fr; align-content:start; gap:34px; width:min(110%,560px); margin-inline:auto; isolation:isolate; }
+.virtual-card { position:relative; grid-column:1; width:var(--card-width); box-sizing:border-box; overflow:hidden; border-radius:var(--card-radius); box-shadow:0 22px 55px rgba(0,0,0,.34); }
 .virtual-card::after { position:absolute; z-index:1; inset:-30% -60%; content:""; background:linear-gradient(112deg,transparent 42%,rgba(255,240,177,.14) 48%,rgba(212,175,55,.22) 51%,transparent 58%); transform:translateX(-70%); animation:card-sheen 8s ease-in-out infinite; pointer-events:none; }
-.virtual-card img { display:block; width:100%; height:100%; object-fit:cover; }
-.virtual-card-back { bottom:5%; left:0; animation:card-float-back 7s ease-in-out infinite; }
-.virtual-card-front { top:8%; right:0; z-index:2; animation:card-float-front 6s ease-in-out -1.2s infinite; }
-@keyframes card-float-back { 0%,100% { transform:translate3d(0,0,1px) rotate(2deg); } 50% { transform:translate3d(0,-8px,1px) rotate(1deg); } }
-@keyframes card-float-front { 0%,100% { transform:translate3d(0,0,2px) rotate(-2deg); } 50% { transform:translate3d(0,8px,2px) rotate(-1deg); } }
-@keyframes card-sheen { 0%,42% { transform:translateX(-70%); opacity:0; } 52% { opacity:1; } 68%,100% { transform:translateX(70%); opacity:0; } }
+.virtual-card img { display:block; width:100%; height:auto; }
+.virtual-card-back { order:2; justify-self:start; animation:card-float-back 8s ease-in-out infinite; }
+.virtual-card-front { order:1; justify-self:end; z-index:2; animation:card-float-front 7s ease-in-out -1.4s infinite; }
+@keyframes card-float-back { 0%,100% { transform:translate3d(0,0,1px) rotate(1.3deg); } 50% { transform:translate3d(-3px,-7px,1px) rotate(.6deg); } }
+@keyframes card-float-front { 0%,100% { transform:translate3d(0,0,2px) rotate(-1.3deg); } 50% { transform:translate3d(3px,8px,2px) rotate(-.5deg); } }
+@keyframes card-sheen { 0%,44% { transform:translateX(-70%); opacity:0; } 54% { opacity:1; } 68%,100% { transform:translateX(70%); opacity:0; } }
 
 @media(max-width:800px) {
 	:root { --pv-header-height:72px; --pv-section-space:72px; }
@@ -155,7 +155,7 @@ section[id], .hero { scroll-margin-top:var(--pv-header-height); }
 	.social-links span:not(.social-icon) { font-size:17px; }
 	.social-links small { font-size:13px; }
 	.contact-form { padding:24px; }
-	.virtual-card-composition { --card-width:min(100%,410px); min-height:330px; width:min(100%,460px); }
+	.virtual-card-composition { --card-width:min(94%,520px); gap:30px; width:min(110%,520px); }
 	.contact-form label { font-size:12px; }
 	.contact-form input,.contact-form select,.contact-form textarea { font-size:16px; }
 	.footer-inner nav,.footer-inner>a { font-size:14px; }
@@ -164,9 +164,8 @@ section[id], .hero { scroll-margin-top:var(--pv-header-height); }
 	.whatsapp-float strong { display:none; }
 }
 @media(max-width:520px) {
-	.virtual-card-composition { --card-width:92%; --card-radius:11px; min-height:270px; }
-	.virtual-card-back { bottom:4%; }
-	.virtual-card-front { top:7%; }
+	.virtual-card-composition { --card-width:92%; --card-radius:11px; gap:28px; width:100%; }
+	.virtual-card-back,.virtual-card-front { justify-self:center; }
 }
 @media(prefers-reduced-motion:reduce) {
 	.virtual-card,.virtual-card::after { animation:none; }
