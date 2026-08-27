@@ -8,7 +8,7 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
     <label>E-mail<input name="email" type="email" autocomplete="email" required maxlength="160" placeholder="seu@email.com" /></label>
     <label>WhatsApp<input name="phone" type="tel" autocomplete="tel" required maxlength="30" placeholder="(00) 00000-0000" /></label>
     <label>Perfil do cliente<select name="profile" required><option value="">Selecione</option><option>Corretor</option><option>Imobiliária</option><option>Construtora</option><option>Incorporadora</option><option>Proprietário</option><option>Outro</option></select></label>
-    <label class="full-width">Serviço de interesse<select name="service" required><option value="">Selecione</option><option>Vídeo imobiliário</option><option>Drone 4K</option><option>Fotografia imobiliária</option><option>Tour Virtual 360°</option><option>Conteúdo para corretor</option><option>Pacote completo</option><option>Outro</option></select></label>
+    <label class="full-width">Serviço de interesse<select name="service" required><option value="">Selecione</option><option>Vídeo imobiliário</option><option>Drone 4K</option><option>Fotografia imobiliária</option><option>Tour Virtual 360°</option><option>Conteúdo para corretor</option><option>Visualização imobiliária com Inteligência Artificial</option><option>Pacote completo</option><option>Outro</option></select></label>
     <label class="full-width">Mensagem<textarea name="message" required maxlength="2000" rows="5" placeholder="Conte um pouco sobre o imóvel ou projeto."></textarea></label>
     <input class="honeypot" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
     {turnstileSiteKey && <div class="cf-turnstile" data-sitekey={turnstileSiteKey}></div>}
