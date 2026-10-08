@@ -41,7 +41,16 @@ export const onRequestPost = async ({ request, env }: ContactContext) => {
   if (errors.length) return json({ success: false, code: 'validation', errors }, 400);
   const requestId = form.get('requestId');
   if (typeof requestId !== 'string' || !requestIdPattern.test(requestId)) return json({ success: false, code: 'invalid_request' }, 400);
-  if (!env.TURNSTILE_SECRET_KEY || !env.TURNSTILE_EXPECTED_HOSTNAME || !configuredGoogle(env)) return json({ success: false, code: 'unavailable', message: 'Canal temporariamente indisponível. Fale conosco pelo WhatsApp.' }, 503);
+  if (!env.TURNSTILE_SECRET_KEY || !env.TURNSTILE_EXPECTED_HOSTNAME || !configuredGoogle(env)) {
+    // Fixed labels only: never log values, request bodies, or raw exceptions.
+    const issues: string[] = [];
+    if (!env.TURNSTILE_SECRET_KEY) issues.push('TURNSTILE_SECRET_KEY:missing');
+    if (!env.TURNSTILE_EXPECTED_HOSTNAME) issues.push('TURNSTILE_EXPECTED_HOSTNAME:missing');
+    if (!configuredGoogle({ ...env, GOOGLE_FORMS_SHARED_SECRET: 'x'.repeat(64) })) issues.push('GOOGLE_APPS_SCRIPT_URL:missing_or_invalid');
+    if (!/^[A-Za-z0-9_-]{43,128}$/.test(env.GOOGLE_FORMS_SHARED_SECRET ?? '')) issues.push('GOOGLE_FORMS_SHARED_SECRET:missing_or_invalid');
+    console.error('contact_configuration', { issues });
+    return json({ success: false, code: 'unavailable', message: 'Canal temporariamente indisponível. Fale conosco pelo WhatsApp.' }, 503);
+  }
   const token = form.get('cf-turnstile-response');
   if (typeof token !== 'string' || !token || token.length > 2048) return json({ success: false, code: 'turnstile' }, 400);
   try {

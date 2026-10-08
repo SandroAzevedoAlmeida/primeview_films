@@ -125,6 +125,21 @@ test('invalid form, origin, captcha and missing configuration never reach Google
 test('body limits include requests without Content-Length',async()=>{
   const response=await onRequestPost({request:new Request('https://primeview.test/api/contact',{method:'POST',body:'x'.repeat(17000)}),env});assert.equal(response.status,400);
 });
+
+test('configuration diagnostics identify fields without logging secrets or client data',async t=>{
+  const logs=[];t.mock.method(console,'error',(...args)=>logs.push(args));
+  for(const [field,value] of [['TURNSTILE_SECRET_KEY',undefined],['TURNSTILE_EXPECTED_HOSTNAME',undefined],['GOOGLE_APPS_SCRIPT_URL','https://invalid.test/private'],['GOOGLE_FORMS_SHARED_SECRET','private-invalid-value']]) {
+    const response=await sendContact({}, {...env,[field]:value});
+    assert.equal(response.status,503);
+    const diagnostic=logs.at(-1);
+    assert.equal(diagnostic[0],'contact_configuration');
+    assert.equal(diagnostic[1].issues.length,1);
+    assert(diagnostic[1].issues[0].startsWith(field+':'));
+    const output=JSON.stringify(diagnostic);
+    for(const sensitive of [secret,contact.name,contact.email,'private-invalid-value','https://invalid.test/private']) assert(!output.includes(sensitive));
+    const body=await response.json();assert.equal(body.code,'unavailable');assert.equal(body.issues,undefined);
+  }
+});
 test('Google failure is not reported as success; lost response retry deduplicates',async t=>{
   const g=googleFixture();t.mock.method(globalThis,'fetch',g.mockFetch);g.state.responseLost=true;const id=randomUUID();
   assert.equal((await sendContact({requestId:id})).status,503);assert.equal(g.state.emailCalls,0);g.state.responseLost=false;
