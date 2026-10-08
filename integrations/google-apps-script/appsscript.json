@@ -1,0 +1,10 @@
+{
+  "timeZone": "America/Sao_Paulo",
+  "dependencies": {},
+  "exceptionLogging": "NONE",
+  "runtimeVersion": "V8",
+  "oauthScopes": [
+    "https://www.googleapis.com/auth/forms",
+    "https://www.googleapis.com/auth/spreadsheets"
+  ]
+}

@@ -1,0 +1,20 @@
+<dialog class="pv-validation-dialog" data-contact-dialog aria-labelledby="pv-validation-title" aria-describedby="pv-validation-intro">
+  <h2 id="pv-validation-title" tabindex="-1">Faltam algumas informações</h2>
+  <p id="pv-validation-intro">Para enviar sua solicitação, preencha ou corrija:</p>
+  <ul data-contact-errors></ul>
+  <button class="button button-gold" type="button" data-dialog-close>Entendi</button>
+</dialog>
+
+<style is:global>
+  .pv-validation-dialog { position:fixed; inset:0; box-sizing:border-box; width:min(520px,calc(100vw - 32px)); max-height:calc(100dvh - 48px); overflow:auto; margin:auto; padding:32px; border:1px solid var(--pv-gold); border-radius:2px; background:var(--pv-black); color:var(--pv-white); box-shadow:0 20px 80px #0009; }
+  .pv-validation-dialog::backdrop { background:rgb(0 0 0 / .78); }
+  .pv-validation-dialog h2 { margin:0 0 20px; font-family:'Playfair Display',serif; font-size:clamp(25px,5vw,34px)!important; line-height:1.15!important; color:var(--pv-gold); text-transform:uppercase; }
+  .pv-validation-dialog h2:focus { outline:none; }
+  .pv-validation-dialog p { font-size:16px; line-height:1.6; color:#d1d1cc; margin:0 0 20px; }
+  .pv-validation-dialog ul { padding-left:20px; margin:0 0 28px; }
+  .pv-validation-dialog li { padding:5px 0; font-size:15px; line-height:1.5; }
+  .pv-validation-dialog li::marker { color:var(--pv-gold); }
+  .pv-validation-dialog li button { display:inline; padding:0; border:0; color:inherit; background:transparent; text-align:left; font:inherit; text-decoration:underline; text-decoration-color:var(--pv-gold); text-underline-offset:3px; }
+  @media(max-width:480px) { .pv-validation-dialog { padding:24px; } }
+  @media(prefers-reduced-motion:reduce) { .pv-validation-dialog,.pv-validation-dialog::backdrop { animation:none; transition:none; } }
+</style>

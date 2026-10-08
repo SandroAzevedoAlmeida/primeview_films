@@ -1,0 +1,29 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import { company } from '../config/company';
+---
+<BaseLayout title="Privacidade | PrimeView Filmes" description="Informações sobre os dados enviados no formulário de contato da PrimeView Filmes.">
+  <main class="pv-privacy container">
+    <a class="text-link" href="/#contato">← Voltar ao contato</a>
+    <p class="eyebrow">PrimeView Filmes</p>
+    <h1>Privacidade no contato</h1>
+    <p>Ao solicitar um orçamento, você informa nome, e-mail, WhatsApp, perfil do cliente, serviço de interesse e mensagem. Essas informações permitem à PrimeView Filmes compreender seu projeto e entrar em contato para atendê-lo.</p>
+    <h2>Uso das informações</h2>
+    <p>O formulário é destinado ao atendimento de solicitações e à preparação de propostas. Seu envio não inscreve você automaticamente em campanhas de marketing. Descreva apenas as informações necessárias ao projeto.</p>
+    <h2>Serviços envolvidos</h2>
+    <p>O processamento utiliza Cloudflare para o site e a verificação de segurança, Google Forms e Google Planilhas para registrar solicitações e Resend para notificações à equipe. Esses prestadores podem processar dados em outros países, conforme suas condições e medidas de proteção.</p>
+    <h2>Acesso e conservação</h2>
+    <p>Os registros de atendimento devem ter acesso restrito às pessoas autorizadas pela PrimeView Filmes. Para informações sobre o período de conservação aplicável à sua solicitação, entre em contato pelo e-mail abaixo.</p>
+    <h2>Seus dados e suas solicitações</h2>
+    <p>Você pode solicitar informações sobre o tratamento de seus dados, acesso, correção ou exclusão, observadas as obrigações legais aplicáveis, pelo e-mail <a href={`mailto:${company.email}`}>{company.email}</a>.</p>
+    <p>Responsável pelo atendimento: {company.name}, {company.city} — {company.state}.</p>
+  </main>
+</BaseLayout>
+<style>
+  .pv-privacy { max-width:850px; padding-block:64px; }
+  .pv-privacy .eyebrow { margin-top:48px; }
+  .pv-privacy h1 { font-family:'Playfair Display',serif; font-size:clamp(36px,6vw,56px); font-weight:500; line-height:1.15; color:var(--pv-gold); }
+  .pv-privacy h2 { margin-top:36px; font-size:26px; }
+  .pv-privacy p { color:#c7c7c1; }
+  .pv-privacy p a { color:var(--pv-gold); overflow-wrap:anywhere; }
+</style>

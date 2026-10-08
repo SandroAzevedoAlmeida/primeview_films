@@ -1,4 +1,6 @@
 ---
+import ContactValidationDialog from './ContactValidationDialog.astro';
+import { profiles, services } from '../lib/contact-validation';
 const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
 ---
 
@@ -7,29 +9,100 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
     <label>Nome<input name="name" type="text" autocomplete="name" required maxlength="100" placeholder="Como podemos chamar você?" /></label>
     <label>E-mail<input name="email" type="email" autocomplete="email" required maxlength="160" placeholder="seu@email.com" /></label>
     <label>WhatsApp<input name="phone" type="tel" autocomplete="tel" required maxlength="30" placeholder="(00) 00000-0000" /></label>
-    <label>Perfil do cliente<select name="profile" required><option value="">Selecione</option><option>Corretor</option><option>Imobiliária</option><option>Construtora</option><option>Incorporadora</option><option>Proprietário</option><option>Outro</option></select></label>
-    <label class="full-width">Serviço de interesse<select name="service" required><option value="">Selecione</option><option>Vídeo imobiliário</option><option>Drone 4K</option><option>Fotografia imobiliária</option><option>Tour Virtual 360°</option><option>Conteúdo para corretor</option><option>Visualização imobiliária com Inteligência Artificial</option><option>Pacote completo</option><option>Outro</option></select></label>
-    <label class="full-width">Mensagem<textarea name="message" required maxlength="2000" rows="5" placeholder="Conte um pouco sobre o imóvel ou projeto."></textarea></label>
+    <label>Perfil do cliente<select name="profile" required><option value="">Selecione</option>{profiles.map(profile => <option>{profile}</option>)}</select></label>
+    <label class="full-width">Serviço de interesse<select name="service" required><option value="">Selecione</option>{services.map(service => <option>{service}</option>)}<option disabled>Imagens aéreas — em breve</option><option disabled>Visualização com IA — em breve</option></select></label>
+    <label class="full-width">Mensagem<textarea name="message" required maxlength="2000" rows="5" placeholder="Conte um pouco sobre seu projeto."></textarea></label>
     <input class="honeypot" name="website" tabindex="-1" autocomplete="off" aria-hidden="true" />
-    {turnstileSiteKey && <div class="cf-turnstile" data-sitekey={turnstileSiteKey}></div>}
+    {turnstileSiteKey && <div class="cf-turnstile" data-sitekey={turnstileSiteKey} data-action="contact"></div>}
   </div>
   <div class="form-actions"><button class="button button-gold" type="submit" data-submit>Enviar solicitação <span aria-hidden="true">↗</span></button><p class="form-status" role="status" data-form-status></p></div>
+  <ContactValidationDialog />
 </form>
 {turnstileSiteKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 
 <script>
+  import { fields, labels, validateContact, requestIdPattern, type ContactField, type FieldError } from '../lib/contact-validation';
   const form = document.querySelector<HTMLFormElement>('[data-contact-form]');
   const submit = form?.querySelector<HTMLButtonElement>('[data-submit]');
   const status = form?.querySelector<HTMLElement>('[data-form-status]');
-  form?.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    if (!submit || !status) return;
-    submit.disabled = true; submit.textContent = 'Enviando...'; status.textContent = '';
-    try {
-      const response = await fetch(form.action, { method: 'POST', body: new FormData(form), headers: { Accept: 'application/json' } });
-      if (!response.ok) throw new Error('request');
-      form.reset(); status.textContent = 'Mensagem enviada com sucesso. A PrimeView Filmes recebeu sua solicitação e entrará em contato.'; status.dataset.state = 'success';
-    } catch { status.textContent = 'Não foi possível enviar sua mensagem agora. Tente novamente ou fale conosco pelo WhatsApp.'; status.dataset.state = 'error'; }
-    submit.disabled = false; submit.innerHTML = 'Enviar solicitação <span aria-hidden="true">↗</span>';
-  });
+  const dialog = form?.querySelector<HTMLDialogElement>('[data-contact-dialog]');
+  const list = dialog?.querySelector<HTMLUListElement>('[data-contact-errors]');
+  if (form && submit && status && dialog && list) {
+    const control = (field: ContactField) => form.elements.namedItem(field) as HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+    const read = () => Object.fromEntries(fields.map(field => [field, control(field).value]));
+    let returnFocus: HTMLElement = submit;
+    let inFlight = false;
+    let attempt: { digest: string; id: string } | undefined;
+    const storageKey = 'primeview-contact-attempt';
+    form.noValidate = true;
+    fields.forEach(field => { control(field).id = `pv-contact-${field}`; });
+    function showErrors(errors: FieldError[]) {
+      list!.replaceChildren();
+      fields.forEach(field => control(field).removeAttribute('aria-invalid'));
+      for (const error of errors) {
+        control(error.field).setAttribute('aria-invalid', 'true');
+        const li = document.createElement('li');
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.textContent = `${labels[error.field]} — ${error.message}`;
+        button.addEventListener('click', () => { returnFocus = control(error.field); dialog!.close(); });
+        li.append(button); list!.append(li);
+      }
+      returnFocus = errors.length ? control(errors[0].field) : submit!;
+      if (!dialog!.open) dialog!.showModal();
+      dialog!.querySelector<HTMLElement>('h2')?.focus();
+    }
+    dialog.querySelector('[data-dialog-close]')?.addEventListener('click', () => dialog.close());
+    dialog.addEventListener('keydown', event => {
+      if (event.key === 'Escape') { event.preventDefault(); dialog.close(); }
+    });
+    dialog.addEventListener('close', () => returnFocus.focus());
+    form.addEventListener('input', () => {
+      const invalid = new Set(validateContact(read()).errors.map(error => error.field));
+      fields.forEach(field => { if (!invalid.has(field)) control(field).removeAttribute('aria-invalid'); });
+    });
+    form.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (inFlight) return;
+      const { values, errors } = validateContact(read());
+      if (errors.length) { showErrors(errors); return; }
+      fields.forEach(field => control(field).removeAttribute('aria-invalid'));
+      inFlight = true; submit.disabled = true; submit.textContent = 'Enviando...'; status.textContent = ''; delete status.dataset.state;
+      try {
+        const digest = [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(JSON.stringify(values))))].map(b => b.toString(16).padStart(2, '0')).join('');
+        try { attempt ??= JSON.parse(sessionStorage.getItem(storageKey) ?? 'null') ?? undefined; } catch { /* Storage is optional; no raw form values are stored. */ }
+        if (!attempt || attempt.digest !== digest || !requestIdPattern.test(attempt.id)) attempt = { digest, id: crypto.randomUUID() };
+        try { sessionStorage.setItem(storageKey, JSON.stringify(attempt)); } catch { /* Private browsing may disable storage. */ }
+        const body = new FormData(form);
+        fields.forEach(field => body.set(field, values[field]));
+        body.set('requestId', attempt.id);
+        const response = await fetch(form.action, { method: 'POST', body, headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(90000) });
+        const result = await response.json();
+        if (!response.ok || result.success !== true || result.status !== 'recorded' || result.requestId !== attempt.id) {
+          const serverErrors = Array.isArray(result.errors) ? result.errors.filter((e: FieldError) => e && fields.includes(e.field)).map((e: FieldError) => ({ field: e.field, message: 'Confira este campo.' })) : [];
+          if (serverErrors.length) showErrors(serverErrors);
+          status.textContent = result.code === 'verification_pending' ? 'Ainda não foi possível confirmar o recebimento. Seus dados foram mantidos; tente novamente ou fale conosco pelo WhatsApp.' : result.code === 'turnstile' ? 'Confirme a verificação de segurança e tente novamente. Seus dados foram mantidos.' : 'Não foi possível enviar sua mensagem agora. Tente novamente ou fale conosco pelo WhatsApp.';
+          status.dataset.state = 'error';
+          return;
+        }
+        if (JSON.stringify(validateContact(read()).values) === JSON.stringify(values)) form.reset();
+        status.textContent = 'Solicitação registrada com sucesso. A PrimeView Filmes recebeu seus dados e entrará em contato.';
+        status.dataset.state = 'success';
+        attempt = undefined;
+        try { sessionStorage.removeItem(storageKey); } catch { /* No raw form values in storage. */ }
+      } catch {
+        status.textContent = 'Não foi possível confirmar o envio agora. Seus dados foram mantidos. Tente novamente ou fale conosco pelo WhatsApp.';
+        status.dataset.state = 'error';
+      } finally {
+        const widget = form.querySelector<HTMLElement>('.cf-turnstile');
+        const turnstile = (window as Window & { turnstile?: { reset: (container: HTMLElement) => void } }).turnstile;
+        if (widget && turnstile) { try { turnstile.reset(widget); } catch { /* Widget may not have loaded. */ } }
+        inFlight = false; submit.disabled = false; submit.innerHTML = 'Enviar solicitação <span aria-hidden="true">↗</span>';
+      }
+    });
+  }
 </script>
+
+<style is:global>
+  form[data-contact-form] input[aria-invalid="true"],form[data-contact-form] select[aria-invalid="true"],form[data-contact-form] textarea[aria-invalid="true"] { border-bottom-color:var(--pv-gold); box-shadow:0 1px 0 var(--pv-gold); }
+</style>

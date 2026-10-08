@@ -1,33 +1,68 @@
-interface ContactEnv {
+﻿import { validateContact, requestIdPattern } from '../../src/lib/contact-validation.ts';
+import { callGoogle, configuredGoogle, notifyContact, IntegrationError, type GoogleEnv } from '../../src/lib/server/google-forms.ts';
+
+interface ContactEnv extends GoogleEnv {
   TURNSTILE_SECRET_KEY?: string;
-  RESEND_API_KEY?: string;
-  CONTACT_TO_EMAIL?: string;
+  TURNSTILE_EXPECTED_HOSTNAME?: string;
+}
+interface ContactContext { request: Request; env: ContactEnv; }
+const json = (body: Record<string, unknown>, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' } });
+const maxBody = 16384;
+
+async function boundedForm(request: Request): Promise<FormData> {
+  if (Number(request.headers.get('Content-Length') ?? 0) > maxBody) throw new Error('body_size');
+  if (!request.body) throw new Error('body_missing');
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > maxBody) { await reader.cancel(); throw new Error('body_size'); }
+    chunks.push(value);
+  }
+  const body = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { body.set(chunk, offset); offset += chunk.length; }
+  return new Request(request.url, { method: 'POST', headers: request.headers, body }).formData();
 }
 
-const limits = { name: 100, email: 160, phone: 30, profile: 40, service: 80, message: 2000 };
-const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const json = (body: Record<string, string>, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
-
-interface ContactContext { request: Request; env: ContactEnv; }
-
-export const onRequestPost = async (context: ContactContext) => {
+export const onRequestPost = async ({ request, env }: ContactContext) => {
+  let form: FormData;
   try {
-    const form = await context.request.formData();
-    if (String(form.get('website') ?? '').trim()) return json({ message: 'Solicitação recebida.' });
-    const values = Object.fromEntries(['name', 'email', 'phone', 'profile', 'service', 'message'].map((key) => [key, String(form.get(key) ?? '').trim()]));
-    for (const [key, limit] of Object.entries(limits)) if (!values[key] || values[key].length > limit) return json({ message: 'Confira os campos e tente novamente.' }, 400);
-    if (!emailPattern.test(values.email)) return json({ message: 'Confira o e-mail informado.' }, 400);
-    if (!context.env.TURNSTILE_SECRET_KEY || !context.env.RESEND_API_KEY) return json({ message: 'Canal temporariamente indisponível.' }, 503);
-
-    const turnstileToken = String(form.get('cf-turnstile-response') ?? '');
-    const turnstileBody = new URLSearchParams({ secret: context.env.TURNSTILE_SECRET_KEY, response: turnstileToken, remoteip: context.request.headers.get('CF-Connecting-IP') ?? '' });
-    const turnstile = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body: turnstileBody });
-    if (!(await turnstile.json() as { success?: boolean }).success) return json({ message: 'Não foi possível validar sua solicitação.' }, 400);
-
-    const destination = context.env.CONTACT_TO_EMAIL ?? 'primeviewfilmes@gmail.com';
-    const email = await fetch('https://api.resend.com/emails', { method: 'POST', headers: { Authorization: `Bearer ${context.env.RESEND_API_KEY}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ from: 'PrimeView Filmes <onboarding@resend.dev>', to: [destination], subject: 'Novo contato pelo site — PrimeView Filmes', text: `NOVO CONTATO — SITE PRIMEVIEW FILMES\n\nNome: ${values.name}\nE-mail: ${values.email}\nWhatsApp: ${values.phone}\nPerfil: ${values.profile}\nServiço: ${values.service}\n\nMensagem:\n${values.message}` }) });
-    if (!email.ok) return json({ message: 'Não foi possível enviar sua mensagem agora.' }, 502);
-    return json({ message: 'Mensagem enviada com sucesso.' });
-  } catch { return json({ message: 'Não foi possível processar sua solicitação.' }, 400); }
+    const origin = request.headers.get('Origin');
+    if (origin && origin !== new URL(request.url).origin) return json({ success: false, code: 'origin' }, 403);
+    form = await boundedForm(request);
+  } catch { return json({ success: false, code: 'invalid_request', message: 'Confira os campos e tente novamente.' }, 400); }
+  // Never claim a Google submission for a honeypot request.
+  if (form.get('website')) return json({ success: false, code: 'invalid_request' }, 400);
+  const { values, errors } = validateContact(Object.fromEntries(form.entries()));
+  if (errors.length) return json({ success: false, code: 'validation', errors }, 400);
+  const requestId = form.get('requestId');
+  if (typeof requestId !== 'string' || !requestIdPattern.test(requestId)) return json({ success: false, code: 'invalid_request' }, 400);
+  if (!env.TURNSTILE_SECRET_KEY || !env.RESEND_API_KEY || !env.TURNSTILE_EXPECTED_HOSTNAME || !configuredGoogle(env)) return json({ success: false, code: 'unavailable', message: 'Canal temporariamente indisponível. Fale conosco pelo WhatsApp.' }, 503);
+  const token = form.get('cf-turnstile-response');
+  if (typeof token !== 'string' || !token || token.length > 2048) return json({ success: false, code: 'turnstile' }, 400);
+  try {
+    const body = new URLSearchParams({ secret: env.TURNSTILE_SECRET_KEY, response: token, idempotency_key: crypto.randomUUID() });
+    const ip = request.headers.get('CF-Connecting-IP');
+    if (ip) body.set('remoteip', ip);
+    const response = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body, signal: AbortSignal.timeout(10000) });
+    const result = await response.json() as { success?: boolean; hostname?: string; action?: string };
+    if (!response.ok || result.success !== true || result.hostname !== env.TURNSTILE_EXPECTED_HOSTNAME || result.action !== 'contact') return json({ success: false, code: 'turnstile' }, 400);
+  } catch { return json({ success: false, code: 'turnstile_unavailable' }, 503); }
+  try {
+    const result = await callGoogle(env, 'submit', requestId, {
+      values,
+      mailFrom: env.CONTACT_FROM_EMAIL ?? 'PrimeView Filmes <onboarding@resend.dev>',
+      mailTo: env.CONTACT_TO_EMAIL ?? 'primeviewfilmes@gmail.com',
+    });
+    if (typeof result.googleResponseId !== 'string' || !result.googleResponseId) throw new IntegrationError('verification_pending');
+    const notification = await notifyContact(env, requestId);
+    return json({ success: true, status: 'recorded', requestId, notification, message: 'Solicitação registrada com sucesso.' });
+  } catch (error) {
+    const code = error instanceof IntegrationError && error.code === 'request_conflict' ? 'request_conflict' : 'verification_pending';
+    return json({ success: false, code, message: 'Não foi possível confirmar o recebimento. Seus dados foram mantidos.' }, code === 'request_conflict' ? 409 : 503);
+  }
 };

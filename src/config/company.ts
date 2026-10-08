@@ -1,7 +1,7 @@
 export const company = {
   name: "PrimeView Filmes",
   slogan: "Imagens que impressionam. Histórias que vendem.",
-  positioning: "Transformamos imóveis em experiências visuais.",
+  positioning: "Transformamos espaços, marcas e negócios em experiências visuais.",
 
   phone: "(27) 98123-0085",
   whatsapp: "https://wa.me/5527981230085",

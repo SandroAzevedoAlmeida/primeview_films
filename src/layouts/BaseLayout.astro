@@ -1,7 +1,7 @@
 ---
 import '../styles/global.css';
 interface Props { title?: string; description?: string; }
-const { title = 'PrimeView Filmes | Produção Audiovisual Imobiliária', description = 'Produção audiovisual para corretores, imobiliárias e empreendimentos. Vídeos imobiliários, drone 4K, fotografia profissional e Tour Virtual 360°.' } = Astro.props;
+const { title = 'PrimeView Filmes | Produtora Audiovisual em Serra ES', description = 'Produção audiovisual em Serra ES para imóveis, empresas e negócios locais. Vídeos institucionais, fotografia profissional e Tour Virtual 360°.' } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://primeviewfilmes.com.br');
 ---
 
@@ -9,7 +9,7 @@ const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://primeviewfi
   <meta charset="UTF-8" /><meta name="viewport" content="width=device-width" /><meta name="generator" content={Astro.generator} />
   <title>{title}</title><meta name="description" content={description} /><link rel="canonical" href={canonical} />
   <link rel="icon" type="image/png" href="/assets/brand/favicon.png" /><meta name="theme-color" content="#080808" />
-  <meta property="og:type" content="website" /><meta property="og:locale" content="pt_BR" /><meta property="og:title" content={title} /><meta property="og:description" content={description} /><meta property="og:image" content="/assets/brand/og-image.jpg" />
-  <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content={title} /><meta name="twitter:description" content={description} /><meta name="twitter:image" content="/assets/brand/og-image.jpg" />
+  <meta property="og:type" content="website" /><meta property="og:locale" content="pt_BR" /><meta property="og:title" content={title} /><meta property="og:description" content={description} /><meta property="og:image" content={new URL('/assets/brand/og-image.jpeg', canonical)} />
+  <meta name="twitter:card" content="summary_large_image" /><meta name="twitter:title" content={title} /><meta name="twitter:description" content={description} /><meta name="twitter:image" content={new URL('/assets/brand/og-image.jpeg', canonical)} />
   <script is:inline type="application/ld+json" set:html={JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: 'PrimeView Filmes', url: 'https://primeviewfilmes.com.br', description, email: 'primeviewfilmes@gmail.com', telephone: '+55 27 98123-0085', areaServed: 'Serra e região — Espírito Santo', sameAs: ['https://www.instagram.com/primeview_filmes/', 'https://www.youtube.com/@primeview_filmesbr', 'https://www.facebook.com/profile.php?id=61593439981615', 'https://www.tiktok.com/@primeview.filmes', 'https://www.threads.net/@primeview_filmes'] })}></script>
 </head><body><slot /></body></html>
