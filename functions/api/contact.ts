@@ -1,4 +1,4 @@
-﻿import { validateContact, requestIdPattern } from '../../src/lib/contact-validation.ts';
+import { validateContact, requestIdPattern } from '../../src/lib/contact-validation.ts';
 import { callGoogle, configuredGoogle, notifyContact, IntegrationError, type GoogleEnv } from '../../src/lib/server/google-forms.ts';
 
 interface ContactEnv extends GoogleEnv {
@@ -41,7 +41,7 @@ export const onRequestPost = async ({ request, env }: ContactContext) => {
   if (errors.length) return json({ success: false, code: 'validation', errors }, 400);
   const requestId = form.get('requestId');
   if (typeof requestId !== 'string' || !requestIdPattern.test(requestId)) return json({ success: false, code: 'invalid_request' }, 400);
-  if (!env.TURNSTILE_SECRET_KEY || !env.RESEND_API_KEY || !env.TURNSTILE_EXPECTED_HOSTNAME || !configuredGoogle(env)) return json({ success: false, code: 'unavailable', message: 'Canal temporariamente indisponível. Fale conosco pelo WhatsApp.' }, 503);
+  if (!env.TURNSTILE_SECRET_KEY || !env.TURNSTILE_EXPECTED_HOSTNAME || !configuredGoogle(env)) return json({ success: false, code: 'unavailable', message: 'Canal temporariamente indisponível. Fale conosco pelo WhatsApp.' }, 503);
   const token = form.get('cf-turnstile-response');
   if (typeof token !== 'string' || !token || token.length > 2048) return json({ success: false, code: 'turnstile' }, 400);
   try {

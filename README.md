@@ -42,6 +42,8 @@ As referências antigas em `.claude/skills/primeview-site/` ainda descrevem o fo
 
 ## Formulário, Turnstile e Resend
 
+**Configuração atual: ntfy.** Cadastre `NTFY_TOPIC` como segredo na Cloudflare para receber um aviso genérico no celular, sem dados do cliente. O Resend é opcional e não é exigido para registrar contatos no Google Forms. O ntfy tem prioridade quando o tópico está configurado. Consulte a seção de ntfy no [guia de integração](docs/google-forms.md) para configuração, recuperação e limites; as instruções de Resend abaixo descrevem a alternativa por e-mail.
+
 O navegador valida todos os campos e apresenta os erros em um único diálogo acessível. O envio usa `POST /api/contact`: a Function valida novamente os dados e o Turnstile, autentica a chamada ao Apps Script por HMAC, confirma o registro no Google Forms e tenta a notificação pelo Resend. Nenhum segredo é enviado ao navegador.
 
 A integração só fica ativa após configuração privada e implantação pelo proprietário. Siga [o guia de Google Forms](docs/google-forms.md), incluindo descoberta automática das perguntas, controle de duplicidade e recuperação de notificações. O Google Form público e sua planilha vinculada, sozinhos, não conectam o site.

@@ -2,6 +2,7 @@ export interface GoogleEnv {
   GOOGLE_APPS_SCRIPT_URL?: string;
   GOOGLE_FORMS_SHARED_SECRET?: string;
   RESEND_API_KEY?: string;
+  NTFY_TOPIC?: string;
   CONTACT_FROM_EMAIL?: string;
   CONTACT_TO_EMAIL?: string;
 }
@@ -54,6 +55,7 @@ export async function callGoogle(env: GoogleEnv, action: string, requestId: stri
 }
 
 export async function notifyContact(env: GoogleEnv, requestId: string): Promise<'sent' | 'pending'> {
+  if (env.NTFY_TOPIC) return notifyNtfy(env, requestId);
   if (!env.RESEND_API_KEY) return 'pending';
   try {
     const claim = await callGoogle(env, 'claim_email', requestId);
@@ -75,6 +77,33 @@ export async function notifyContact(env: GoogleEnv, requestId: string): Promise<
   } catch {
     // The Google record remains authoritative. An uncertain email keeps its lease;
     // recovery uses the same Resend key, never a second Forms submission.
+    return 'pending';
+  }
+}
+
+async function notifyNtfy(env: GoogleEnv, requestId: string): Promise<'sent' | 'pending'> {
+  // Keep the existing Apps Script notification ledger/protocol compatible.
+  // Unlike Resend, ntfy does not guarantee idempotency after an uncertain POST.
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(env.NTFY_TOPIC ?? '')) return 'pending';
+  try {
+    const claim = await callGoogle(env, 'claim_email', requestId);
+    if (claim.emailState === 'sent') return 'sent';
+    if (claim.emailState !== 'claimed') return 'pending';
+    const response = await fetch(`https://ntfy.sh/${env.NTFY_TOPIC}`, {
+      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(12000),
+      headers: { 'Content-Type': 'text/plain; charset=utf-8', Title: 'PrimeView Filmes' },
+      body: 'Nova solicitação de orçamento recebida. Consulte a planilha.',
+    });
+    if (!response.ok) {
+      await callGoogle(env, 'email_result', requestId, { delivered: false });
+      return 'pending';
+    }
+    const result = await response.json() as { id?: unknown; topic?: unknown; event?: unknown };
+    if (result.event !== 'message' || result.topic !== env.NTFY_TOPIC || typeof result.id !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(result.id)) return 'pending';
+    await callGoogle(env, 'email_result', requestId, { delivered: true, emailId: result.id });
+    return 'sent';
+  } catch {
+    // Preserve the Google record and the lease if delivery cannot be confirmed.
     return 'pending';
   }
 }

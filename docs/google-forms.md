@@ -2,6 +2,18 @@
 
 ## Estado e limites
 
+### Notificações pelo ntfy (configuração atual)
+
+Cadastre `NTFY_TOPIC` como segredo de Produção na Cloudflare, com o nome exato do tópico inscrito no celular em `ntfy.sh` (1 a 64 letras ASCII, números, hífens ou sublinhados). Faça uma nova implantação após salvar. Não é necessário cadastrar `RESEND_API_KEY`. O ntfy tem prioridade quando `NTFY_TOPIC` está definido; o Resend permanece como alternativa somente quando não há tópico configurado.
+
+O aviso contém apenas “Nova solicitação de orçamento recebida. Consulte a planilha.” Nenhum dado do cliente ou link privado é publicado. Um tópico aleatório não equivale a controle de acesso: quem conhece o nome pode ler/publicar nele. O tópico fica no servidor, nunca no navegador.
+
+O registro no Forms independe de ambos os provedores de notificação. Falha ou ausência de configuração deixa o aviso pendente, mas o contato confirmado continua sendo sucesso. O protocolo e as colunas `email_*` do Apps Script existente são reutilizados como controle de notificação; não é necessário atualizar a implantação Google. O estado `sent` indica aceite pelo provedor, não leitura ou entrega comprovada ao celular.
+
+O script `node scripts/retry-contact-email.mjs` também recupera avisos ntfy quando `NTFY_TOPIC` está no ambiente privado. Ele envia avisos reais. Mantém a reserva de 90 segundos e o limite de recuperação de 23 horas. Diferentemente do Resend, não há garantia de idempotência no ntfy: uma resposta perdida ou falha ao confirmar no controle pode duplicar o aviso em uma tentativa posterior, mas não a resposta no Forms. Não alternar provedores para pendências antigas sem revisão operacional.
+
+As referências abaixo a Resend e sua janela de idempotência aplicam-se apenas à alternativa por e-mail. Documentação ntfy: https://docs.ntfy.sh/publish/
+
 O código local está preparado para Astro → Cloudflare Pages Function → Apps Script → Google Forms → Resend. O link público do Forms não é um endpoint de integração. Nenhuma integração real fica ativa até configurar e implantar os serviços na conta do proprietário. `astro dev` não executa Pages Functions: use um Preview da Cloudflare ou o ambiente local do Wrangler já instalado/configurado. Não instalar ferramentas ou publicar automaticamente.
 
 O formulário público foi conferido com seis perguntas. Os IDs de edição e itens são descobertos por `configurarIntegracao()` no projeto vinculado ao Forms; não são extraídos de URLs `formResponse`, `entry.*` ou presumidos a partir do ID público. As opções devem coincidir com `src/lib/contact-validation.ts`.

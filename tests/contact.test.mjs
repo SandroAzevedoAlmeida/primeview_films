@@ -144,3 +144,48 @@ test('HTML login pages, wrong correlation, and unsafe redirects are rejected',as
   globalThis.fetch=async()=>Response.json({ok:true,requestId:randomUUID()});await assert.rejects(()=>callGoogle(env,'health',id));
   globalThis.fetch=async()=>new Response(null,{status:302,headers:{Location:'https://attacker.test/collect'}});await assert.rejects(()=>callGoogle(env,'health',id));
 });
+
+test('ntfy replaces Resend, sends no client data, and confirmed retries do not notify twice',async t=>{
+  const g=googleFixture(), id=randomUUID(), config={...env,RESEND_API_KEY:undefined,NTFY_TOPIC:'test-only-topic'};
+  let calls=0;
+  t.mock.method(globalThis,'fetch',async(url,init)=>{
+    if(String(url)==='https://ntfy.sh/test-only-topic') {
+      calls++;assert.equal(init.redirect,'error');
+      assert.equal(init.body,'Nova solicitação de orçamento recebida. Consulte a planilha.');
+      return Response.json({id:'ntfy-test-id',event:'message',topic:config.NTFY_TOPIC});
+    }
+    return g.mockFetch(url,init);
+  });
+  assert.equal((await(await sendContact({requestId:id},config)).json()).notification,'sent');
+  assert.equal((await(await sendContact({requestId:id},config)).json()).notification,'sent');
+  assert.equal(calls,1);assert.equal(g.state.submissions,1);assert.equal(g.state.emailCalls,0);
+});
+
+test('ntfy failure, malformed acknowledgement, and timeout preserve the Google record',async t=>{
+  for(const mode of ['failure','malformed','timeout']) {
+    const g=googleFixture(),id=randomUUID(),config={...env,RESEND_API_KEY:undefined,NTFY_TOPIC:'test-only-topic'};
+    let calls=0;
+    const mock=t.mock.method(globalThis,'fetch',async(url,init)=>{
+      if(String(url).startsWith('https://ntfy.sh/')) {
+        calls++;
+        if(mode==='timeout') throw Error('timeout');
+        return mode==='failure'?new Response('',{status:429}):Response.json({id:'wrong-ack'});
+      }
+      return g.mockFetch(url,init);
+    });
+    const response=await sendContact({requestId:id},config);
+    assert.equal(response.status,200);assert.equal((await response.json()).notification,'pending');
+    assert.equal(g.state.submissions,1);assert.equal(g.state.emailCalls,0);
+    if(mode!=='failure') { assert.equal(await notifyContact(config,id),'pending');assert.equal(calls,1); }
+    mock.mock.restore();
+  }
+});
+
+test('missing notification provider or invalid ntfy topic does not block Forms or publish',async t=>{
+  const g=googleFixture();t.mock.method(globalThis,'fetch',g.mockFetch);
+  for(const topic of [undefined,'bad/topic','with spaces','a'.repeat(65)]) {
+    const response=await sendContact({}, {...env,RESEND_API_KEY:undefined,NTFY_TOPIC:topic});
+    assert.equal(response.status,200);assert.equal((await response.json()).notification,'pending');
+  }
+  assert.equal(g.state.submissions,4);assert.equal(g.state.emailCalls,0);
+});

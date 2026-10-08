@@ -10,7 +10,7 @@ if (requested === '--check') {
   console.log('Autenticação e configuração Google verificadas. Nenhuma resposta ou notificação enviada.');
   process.exit(0);
 }
-if (!env.RESEND_API_KEY) throw new Error('Configure RESEND_API_KEY no ambiente privado.');
+if (!env.RESEND_API_KEY && !env.NTFY_TOPIC) throw new Error('Configure NTFY_TOPIC ou RESEND_API_KEY no ambiente privado.');
 if (requested && !requestIdPattern.test(requested)) throw new Error('Identificador inválido.');
 const ids = requested ? [requested] : (await callGoogle(env, 'pending_notifications', crypto.randomUUID())).pendingRequestIds;
 if (!Array.isArray(ids)) throw new Error('Resposta inválida da integração.');
