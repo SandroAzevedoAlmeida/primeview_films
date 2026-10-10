@@ -126,6 +126,20 @@ test('body limits include requests without Content-Length',async()=>{
   const response=await onRequestPost({request:new Request('https://primeview.test/api/contact',{method:'POST',body:'x'.repeat(17000)}),env});assert.equal(response.status,400);
 });
 
+test('Google diagnostics expose only allowlisted codes, never upstream error text',async t=>{
+  const logs=[];t.mock.method(console,'error',(...args)=>logs.push(args));
+  const g=googleFixture();
+  for(const upstream of ['authentication','configuration','private-secret-and-client-data']) {
+    const mock=t.mock.method(globalThis,'fetch',async(url,init)=>String(url)===env.GOOGLE_APPS_SCRIPT_URL?Response.json({ok:false,code:upstream}):g.mockFetch(url,init));
+    const response=await sendContact();assert.equal(response.status,503);
+    assert.equal((await response.json()).code,'verification_pending');
+    assert.deepEqual(logs.at(-1),['contact_google_failure',{code:upstream.startsWith('private-')?'unexpected':upstream}]);
+    assert(!JSON.stringify(logs).includes('private-secret-and-client-data'));
+    assert.equal(g.state.submissions,0);assert.equal(g.state.emailCalls,0);
+    mock.mock.restore();
+  }
+});
+
 test('configuration diagnostics identify fields without logging secrets or client data',async t=>{
   const logs=[];t.mock.method(console,'error',(...args)=>logs.push(args));
   for(const [field,value] of [['TURNSTILE_SECRET_KEY',undefined],['TURNSTILE_EXPECTED_HOSTNAME',undefined],['GOOGLE_APPS_SCRIPT_URL','https://invalid.test/private'],['GOOGLE_FORMS_SHARED_SECRET','private-invalid-value']]) {
