@@ -263,8 +263,24 @@ function pvNotifyNtfy(sheet, record, topic) {
 
 // Run once in the editor to grant the external-request scope. No notification is sent.
 function autorizarNotificacoes() {
-  try {
-    const response = UrlFetchApp.fetch('https://ntfy.sh/v1/health', { followRedirects:false, muteHttpExceptions:true });
-    console.log('ntfy_health_status', response.getResponseCode());
-  } catch (error) { console.log('ntfy_health_unavailable'); }
+  const checks = [
+    ['google', 'https://www.google.com/generate_204'],
+    ['ntfy', 'https://ntfy.sh/v1/health']
+  ];
+  checks.forEach(function(check) {
+    try {
+      const response = UrlFetchApp.fetch(check[1], { followRedirects:false, muteHttpExceptions:true });
+      console.log(check[0] + '_status', response.getResponseCode());
+    } catch (error) {
+      // Inspect locally, but print only fixed categories, never raw exception text.
+      const message = String(error && error.message || '').toLowerCase();
+      const reason = /permission|authoriz|permiss|autoriza/.test(message) ? 'permission'
+        : /quota|too many|limit|muitas vezes/.test(message) ? 'quota'
+        : /timed?\s*out|timeout|tempo.*esgot/.test(message) ? 'timeout'
+        : /dns|resolve|resolver/.test(message) ? 'dns'
+        : /address unavailable|connection|connect|conex|endere.*indispon/.test(message) ? 'connection'
+        : 'unclassified';
+      console.log(check[0] + '_failure', reason);
+    }
+  });
 }
