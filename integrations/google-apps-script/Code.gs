@@ -263,6 +263,8 @@ function pvNotifyNtfy(sheet, record, topic) {
 
 // Run once in the editor to grant the external-request scope. No notification is sent.
 function autorizarNotificacoes() {
+  // Outside catch: let the editor show the consent prompt for missing scopes.
+  ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL);
   const checks = [
     ['google', 'https://www.google.com/generate_204'],
     ['ntfy', 'https://ntfy.sh/v1/health']
