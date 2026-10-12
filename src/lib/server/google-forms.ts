@@ -91,15 +91,53 @@ export async function notifyContact(env: GoogleEnv, requestId: string): Promise<
   }
 }
 
+export interface NtfyPublication {
+  code: 'sent' | 'topic_invalid' | 'http_error' | 'invalid_ack' | 'timeout' | 'transport';
+  httpStatus?: number;
+  id?: string;
+}
+
+// A single attempt. No automatic retry after an uncertain POST.
+export async function publishNtfyJson(env: GoogleEnv): Promise<NtfyPublication> {
+  const topic = env.NTFY_TOPIC;
+  if (typeof topic !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(topic)) return { code: 'topic_invalid' };
+  const signal = AbortSignal.timeout(25000);
+  try {
+    const response = await fetch('https://ntfy.sh/', {
+      method: 'POST', redirect: 'manual', signal,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ topic, title: 'PrimeView Filmes', message: 'Nova solicitacao de orcamento recebida. Consulte a planilha.' }),
+    });
+    if (!response.ok) return { code: 'http_error', httpStatus: response.status };
+    let data;
+    try { data = await response.json(); } catch { return { code: 'invalid_ack', httpStatus: response.status }; }
+    if (!data || data.event !== 'message' || data.topic !== topic || typeof data.id !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(data.id)) return { code: 'invalid_ack', httpStatus: response.status };
+    return { code: 'sent', httpStatus: response.status, id: data.id };
+  } catch (error) {
+    return { code: signal.aborted || error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'transport' };
+  }
+}
+
 async function notifyNtfy(env: GoogleEnv, requestId: string): Promise<'sent' | 'pending'> {
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(env.NTFY_TOPIC ?? '')) return 'pending';
+  let stage = 'claim';
   try {
-    // The existing secret stays in Cloudflare; only the signed server request carries it.
-    // Apps Script owns the lease, publication and acknowledgement in one operation.
-    const result = await callGoogle(env, 'notify_ntfy', requestId, { topic: env.NTFY_TOPIC });
-    return result.emailState === 'sent' ? 'sent' : 'pending';
+    const claim = await callGoogle(env, 'claim_email', requestId);
+    if (claim.emailState === 'sent') return 'sent';
+    if (claim.emailState !== 'claimed') return 'pending';
+    stage = 'publish';
+    const result = await publishNtfyJson(env);
+    if (result.code !== 'sent') {
+      console.error('contact_ntfy_failure', { code: result.code, httpStatus: result.httpStatus });
+      if (result.code === 'http_error') await callGoogle(env, 'email_result', requestId, { delivered: false });
+      return 'pending';
+    }
+    stage = 'confirmation';
+    await callGoogle(env, 'email_result', requestId, { delivered: true, emailId: result.id });
+    return 'sent';
   } catch {
-    // Old deployments and uncertain responses must not invalidate a saved contact.
+    // Fixed stage only: never log the topic, response body or raw exception.
+    console.error('contact_ntfy_failure', { code: 'google_unconfirmed', stage });
     return 'pending';
   }
 }

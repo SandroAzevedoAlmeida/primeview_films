@@ -195,34 +195,37 @@ test('Google transport diagnostics distinguish POST, result GET, and unexpected 
   }
 });
 
-test('ntfy publishes through Apps Script only, with signed topic and durable deduplication',async t=>{
+test('ntfy publishes JSON directly from Cloudflare and deduplicates confirmed sends',async t=>{
   const g=googleFixture(),id=randomUUID(),config={...env,NTFY_TOPIC:'test-only-topic'};
   let calls=0;
-  g.state.ntfyFetch=(url,options)=>{
-    calls++;assert.equal(url,'https://ntfy.sh/test-only-topic');
-    assert.equal(options.followRedirects,false);assert.equal(options.muteHttpExceptions,true);
-    for(const value of Object.values(contact))assert(!options.payload.includes(value));
-    return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({id:'notice-1',event:'message',topic:config.NTFY_TOPIC})};
-  };
-  t.mock.method(globalThis,'fetch',g.mockFetch);
+  t.mock.method(globalThis,'fetch',async(url,options)=>{
+    if(String(url)!=='https://ntfy.sh/') return g.mockFetch(url,options);
+    calls++; assert.equal(options.redirect,'manual');assert.equal(options.method,'POST');
+    assert.equal(options.headers['Content-Type'],'application/json');
+    const payload=JSON.parse(options.body);assert.equal(payload.topic,config.NTFY_TOPIC);
+    for(const value of Object.values(contact))assert(!options.body.includes(value));
+    return Response.json({id:'notice-1',event:'message',topic:config.NTFY_TOPIC});
+  });
   assert.equal((await(await sendContact({requestId:id},config)).json()).notification,'sent');
   assert.equal((await(await sendContact({requestId:id},config)).json()).notification,'sent');
   assert.equal(calls,1);assert.equal(g.state.submissions,1);assert.equal(g.state.emailCalls,0);
   assert.equal(g.state.rows[1][5],'sent');
 });
 
-test('Google ntfy failures preserve Forms and uncertain sends retain their lease',async t=>{
+test('direct ntfy failures preserve Forms and uncertain sends retain their lease',async t=>{
   for(const mode of ['http','redirect','malformed','wrong-topic','throw']){
     const g=googleFixture(),id=randomUUID(),config={...env,NTFY_TOPIC:'test-only-topic'};let calls=0;
-    g.state.ntfyFetch=()=>{calls++;if(mode==='throw')throw Error('private-topic');return {
-      getResponseCode:()=>mode==='http'?522:mode==='redirect'?302:200,
-      getContentText:()=>mode==='malformed'?'not json':JSON.stringify({event:'message',topic:'wrong',id:'notice-1'})
-    }};
-    const mock=t.mock.method(globalThis,'fetch',g.mockFetch);
+    const logs=[];const logger=t.mock.method(console,'error',(...args)=>logs.push(args));
+    const mock=t.mock.method(globalThis,'fetch',async(url,options)=>{
+      if(String(url)!=='https://ntfy.sh/')return g.mockFetch(url,options);
+      calls++;if(mode==='throw')throw Error('private-topic');
+      return new Response(mode==='malformed'?'not json':JSON.stringify({event:'message',topic:'wrong',id:'notice-1'}),{status:mode==='http'?522:mode==='redirect'?302:200});
+    });
     const r=await sendContact({requestId:id},config);assert.equal(r.status,200);assert.equal((await r.json()).notification,'pending');
     assert.equal(g.state.submissions,1);assert.equal(g.state.rows[1][2],'submitted');
     assert.equal(g.state.rows[1][5],['http','redirect'].includes(mode)?'pending':'sending');
     if(!['http','redirect'].includes(mode)){assert.equal(await notifyContact(config,id),'pending');assert.equal(calls,1)}
+    assert(!JSON.stringify(logs).includes('private-topic'));logger.mock.restore();
     mock.mock.restore();
   }
 });
@@ -236,12 +239,12 @@ test('ntfy action rejects untrusted topics, missing records and unsigned request
   assert.equal(g.raw({...envelope,signature:'0'.repeat(64)}).ok,false);assert.equal(calls,0);
 });
 
-test('lost Google notification response retries without republishing confirmed ntfy notice',async t=>{
+test('lost confirmation response does not republish when Google persisted sent',async t=>{
   const g=googleFixture(),id=randomUUID(),config={...env,NTFY_TOPIC:'test-only-topic'};let calls=0,lost=true;
-  g.state.ntfyFetch=()=>{calls++;return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({event:'message',topic:config.NTFY_TOPIC,id:'notice-1'})}};
   t.mock.method(globalThis,'fetch',async(url,init)=>{
+    if(String(url)==='https://ntfy.sh/'){calls++;return Response.json({event:'message',topic:config.NTFY_TOPIC,id:'notice-1'})}
     const result=await g.mockFetch(url,init);
-    if(String(url)===env.GOOGLE_APPS_SCRIPT_URL&&JSON.parse(JSON.parse(init.body).payload).action==='notify_ntfy'&&lost){lost=false;throw Error('lost response')}
+    if(String(url)===env.GOOGLE_APPS_SCRIPT_URL&&JSON.parse(JSON.parse(init.body).payload).action==='email_result'&&lost){lost=false;throw Error('lost response')}
     return result;
   });
   assert.equal((await(await sendContact({requestId:id},config)).json()).notification,'pending');
