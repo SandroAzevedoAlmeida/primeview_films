@@ -12,7 +12,7 @@ const secret = 'test-only-shared-secret-never-use-in-production-0123456789';
 const env = { CONTACT_NOTIFICATION_PROVIDER:'resend', GOOGLE_APPS_SCRIPT_URL:'https://script.google.com/macros/s/test-deployment/exec', GOOGLE_FORMS_SHARED_SECRET:secret, TURNSTILE_SECRET_KEY:'test-only-turnstile', TURNSTILE_EXPECTED_HOSTNAME:'primeview.test', RESEND_API_KEY:'test-only-resend' };
 
 function googleFixture() {
-  const state = { mailThrows:false, mailSaveFails:false, now:Date.now(), rows:[], responses:new Map(), submissions:0, failSubmit:false, failSaveAfterSubmit:false, emailCalls:0, googleCalls:0, turnstileCalls:0, turnstile:true, hostname:'primeview.test', action:'contact', emailOk:true, emailThrows:false, responseLost:false, redirects:false, nextRedirect:null };
+  const state = { mailRows:[], mailMessages:[], mailQuota:100, mailThrows:false, mailSaveFails:false, now:Date.now(), rows:[], responses:new Map(), submissions:0, failSubmit:false, failSaveAfterSubmit:false, emailCalls:0, googleCalls:0, turnstileCalls:0, turnstile:true, hostname:'primeview.test', action:'contact', emailOk:true, emailThrows:false, responseLost:false, redirects:false, nextRedirect:null };
   const properties = new Map([['GOOGLE_FORMS_SHARED_SECRET',secret],['GOOGLE_FORM_ID','test-form'],['FORM_ITEM_MAP',JSON.stringify(Object.fromEntries(fields.map((f,i)=>[f,i+1])))],['INTEGRATION_LEDGER_SHEET_ID','test-ledger']]);
   const titles = ['Nome','E-mail','WhatsApp','Perfil do cliente','Serviço de interesse','Mensagem'];
   const items = fields.map((field,i)=>{
@@ -30,7 +30,6 @@ function googleFixture() {
     setValues:updates=>{if(state.failSaveAfterSubmit&&state.submissions){state.failSaveAfterSubmit=false;throw Error('Simulated ledger write failure')}updates.forEach((r,i)=>{rows[row-1+i]=[...r]})},
     createTextFinder:id=>({matchEntireCell(){return this},findNext:()=>{const i=rows.findIndex((r,n)=>n>=row-1&&r[col-1]===id);return i<0?null:{getRow:()=>i+1}}})
   })});
-  state.mailRows=[];state.mailMessages=[];state.mailQuota=100;
   const sheet=makeSheet(state.rows);let emailSheet;
   const spreadsheet={getSheetByName:name=>name==='AvisosEmail'?emailSheet:sheet,insertSheet:name=>{if(name==='AvisosEmail'){emailSheet=makeSheet(state.mailRows);return emailSheet}return sheet}};let locked=false;const nonces=new Map();
   const ctx=vm.createContext({ console:{log(){}}, Date:class extends Date{static now(){return state.now}},
