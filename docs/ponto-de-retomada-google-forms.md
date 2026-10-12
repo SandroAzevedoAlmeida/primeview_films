@@ -1,5 +1,9 @@
 # Ponto de retomada — integração Google Forms
 
+## Migracao ntfy preparada em 12/10/2026
+
+Codigo local adaptado: Cloudflare chama notify_ntfy assinado; Apps Script publica e confirma o aviso. Falta o proprietario atualizar Code.gs e appsscript.json, executar autorizarNotificacoes e publicar nova versao da implantacao Google existente. Guia: docs/ativar-ntfy-google.md. A entrega real pelo Google ainda nao foi comprovada. Esta etapa substitui o proximo passo exploratorio abaixo.
+
 ## Atualiza??o de 12/10/2026 ? falha ntfy isolada em produ??o
 
 O propriet?rio autorizou todos os testes necess?rios. Este resultado substitui as pend?ncias antigas abaixo.

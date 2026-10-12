@@ -128,7 +128,7 @@ function doPost(event) {
     const payload = JSON.parse(envelope.payload);
     if (payload.version !== 1 || !PV_UUID.test(payload.requestId || '') || !PV_UUID.test(payload.nonce || '') || !Number.isFinite(payload.sentAt) || Math.abs(Date.now() - payload.sentAt) > 300000) throw new Error('authentication');
     requestId = payload.requestId;
-    const actions = ['submit', 'claim_email', 'email_result', 'pending_notifications', 'health'];
+    const actions = ['submit', 'claim_email', 'email_result', 'pending_notifications', 'health', 'notify_ntfy'];
     if (actions.indexOf(payload.action) === -1) throw new Error('authentication');
     lock = LockService.getScriptLock();
     if (!lock.tryLock(5000)) return pvReply({ ok:false, requestId:requestId, code:'busy' });
@@ -190,6 +190,7 @@ function doPost(event) {
       }
       return pvReply({ ok:true, requestId:requestId, emailState:record.data[5] });
     }
+    if (payload.action === 'notify_ntfy' && (typeof payload.topic !== 'string' || !/^[A-Za-z0-9_-]{1,64}$/.test(payload.topic))) throw new Error('configuration');
     if (record.data[5] === 'sent') return pvReply({ ok:true, requestId:requestId, emailState:'sent' });
     if (Number(record.data[6]) && Date.now() - Number(record.data[6]) > 23 * 60 * 60 * 1000) {
       record.data[5] = 'expired'; pvSave(sheet, record);
@@ -200,6 +201,10 @@ function doPost(event) {
     if (pvDigest(values) !== record.data[1]) return pvReply({ ok:false, requestId:requestId, code:'response_changed' });
     if (!Number(record.data[6])) record.data[6] = Date.now();
     record.data[5] = 'sending'; record.data[7] = Date.now() + 90000; pvSave(sheet, record);
+    if (payload.action === 'notify_ntfy') {
+      pvNotifyNtfy(sheet, record, payload.topic);
+      return pvReply({ ok:true, requestId:requestId, emailState:record.data[5] });
+    }
     return pvReply({ ok:true, requestId:requestId, emailState:'claimed', googleResponseId:record.data[3], values:values, mailFrom:record.data[8], mailTo:record.data[9] });
   } catch (error) {
     // Never return exception text, credentials, form content, or stack traces.
@@ -225,4 +230,41 @@ function reconciliarSolicitacao() {
     props.deleteProperty('RECONCILE_REQUEST_ID'); props.deleteProperty('RECONCILE_RESPONSE_ID');
     console.log('Registro reconciliado. Nenhuma resposta foi enviada.');
   } finally { lock.releaseLock(); }
+}
+
+// The script lock remains held through publication so concurrent retries cannot publish.
+// No raw fetch errors are logged: they can contain the private topic URL.
+function pvNotifyNtfy(sheet, record, topic) {
+  try {
+    const response = UrlFetchApp.fetch('https://ntfy.sh/' + topic, {
+      method: 'post', contentType: 'text/plain; charset=utf-8',
+      headers: { Title: 'PrimeView Filmes' },
+      payload: 'Nova solicitação de orçamento recebida. Consulte a planilha.',
+      followRedirects: false, muteHttpExceptions: true
+    });
+    const status = response.getResponseCode();
+    if (status < 200 || status >= 300) {
+      record.data[5] = 'pending'; record.data[7] = 0; pvSave(sheet, record);
+      console.log('ntfy_http_status', status);
+      return;
+    }
+    const result = JSON.parse(response.getContentText());
+    if (!result || result.event !== 'message' || result.topic !== topic || typeof result.id !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(result.id)) {
+      console.log('ntfy_ack_invalid'); return;
+    }
+    record.data[5] = 'sent'; record.data[10] = result.id; record.data[7] = 0;
+    pvSave(sheet, record);
+  } catch (error) {
+    // The durable lease is retained if publication or persistence is uncertain.
+    record.data[5] = 'sending';
+    console.log('ntfy_delivery_unconfirmed');
+  }
+}
+
+// Run once in the editor to grant the external-request scope. No notification is sent.
+function autorizarNotificacoes() {
+  try {
+    const response = UrlFetchApp.fetch('https://ntfy.sh/v1/health', { followRedirects:false, muteHttpExceptions:true });
+    console.log('ntfy_health_status', response.getResponseCode());
+  } catch (error) { console.log('ntfy_health_unavailable'); }
 }

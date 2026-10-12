@@ -112,3 +112,8 @@ Antes de ativar: revisar privacidade/retenção, verificar HMAC em implantação
 - https://developers.cloudflare.com/turnstile/get-started/server-side-validation/
 - https://resend.com/docs/dashboard/emails/idempotency-keys
 - https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/
+
+
+## Migracao do ntfy para Apps Script (12/10/2026)
+
+O envio ntfy agora usa a acao assinada `notify_ntfy` do Apps Script; a Cloudflare nao publica diretamente no ntfy. Siga [o guia de ativacao](ativar-ntfy-google.md) para atualizar o codigo, manifesto, autorizacao e implantacao Google. O segredo NTFY_TOPIC continua na Cloudflare. As instrucoes antigas de instalacao devem ser complementadas por essa etapa.

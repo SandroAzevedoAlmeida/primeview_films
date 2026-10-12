@@ -92,30 +92,14 @@ export async function notifyContact(env: GoogleEnv, requestId: string): Promise<
 }
 
 async function notifyNtfy(env: GoogleEnv, requestId: string): Promise<'sent' | 'pending'> {
-  // Keep the existing Apps Script notification ledger/protocol compatible.
-  // Unlike Resend, ntfy does not guarantee idempotency after an uncertain POST.
   if (!/^[A-Za-z0-9_-]{1,64}$/.test(env.NTFY_TOPIC ?? '')) return 'pending';
   try {
-    const claim = await callGoogle(env, 'claim_email', requestId);
-    if (claim.emailState === 'sent') return 'sent';
-    if (claim.emailState !== 'claimed') return 'pending';
-    const response = await fetch(`https://ntfy.sh/${env.NTFY_TOPIC}`, {
-      // Workers rejected redirect:'error' in the production diagnostic.
-      // Inspect redirects ourselves; never forward the topic/body elsewhere.
-      method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(12000),
-      headers: { 'Content-Type': 'text/plain; charset=utf-8', Title: 'PrimeView Filmes' },
-      body: 'Nova solicitação de orçamento recebida. Consulte a planilha.',
-    });
-    if (!response.ok) {
-      await callGoogle(env, 'email_result', requestId, { delivered: false });
-      return 'pending';
-    }
-    const result = await response.json() as { id?: unknown; topic?: unknown; event?: unknown };
-    if (result.event !== 'message' || result.topic !== env.NTFY_TOPIC || typeof result.id !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(result.id)) return 'pending';
-    await callGoogle(env, 'email_result', requestId, { delivered: true, emailId: result.id });
-    return 'sent';
+    // The existing secret stays in Cloudflare; only the signed server request carries it.
+    // Apps Script owns the lease, publication and acknowledgement in one operation.
+    const result = await callGoogle(env, 'notify_ntfy', requestId, { topic: env.NTFY_TOPIC });
+    return result.emailState === 'sent' ? 'sent' : 'pending';
   } catch {
-    // Preserve the Google record and the lease if delivery cannot be confirmed.
+    // Old deployments and uncertain responses must not invalidate a saved contact.
     return 'pending';
   }
 }
