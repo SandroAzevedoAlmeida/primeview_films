@@ -1,5 +1,9 @@
 # Ponto de retomada — integração Google Forms
 
+## Estado atual - email principal (12/10/2026)
+
+Usuario priorizou email e confirmou primeviewfilmes@gmail.com. Implementado google_email por padrao, via acao HMAC notify_email e Google MailApp. Ntfy fica opcional, sem envio no modo principal. Aba AvisosEmail separa o estado de email do antigo Controle. Guia: docs/ativar-email-google.md. 29 testes locais passaram; entrega real ainda depende de atualizar Code.gs/manifesto no Google, autorizar script.send_mail, executar autorizarETestarEmail, confirmar caixa/spam e atualizar a implantacao existente. Nenhum email real foi enviado pelo assistente nesta etapa. Historico abaixo foi superado por esta decisao.
+
 ## Ultima tentativa autorizada - 12/10/2026, aproximadamente 20:11 local
 
 Usuario pediu uma tentativa agora e informou limite de 250 mensagens/dia. Uma unica publicacao JSON executada na Cloudflare retornou http_error / HTTP 522, sem providerCode nem Retry-After. Nao confirmou aviso, nao criou contato. Isto difere do 429 anterior: a cota diaria existe, mas nao foi comprovada como causa. Fonte: https://docs.ntfy.sh/publish/#limitations . O limite diario por visitante reinicia a meia-noite UTC conforme https://docs.ntfy.sh/config/#message-limits ; isso nao garante resolver uma falha de conexao. Endpoint temporario ntfy-check e token local removidos. Nao repetir automaticamente nem reimplantar commit temporario 02837fc.

@@ -9,10 +9,10 @@ import { callGoogle, notifyContact, publishNtfyJson } from '../src/lib/server/go
 
 const contact = { name:'Maria de Souza', email:'maria@example.com', phone:'(27) 98765-4321', profile:'Gastronomia', service:'Vídeos institucionais', message:'Gostaria de apresentar meu café.' };
 const secret = 'test-only-shared-secret-never-use-in-production-0123456789';
-const env = { GOOGLE_APPS_SCRIPT_URL:'https://script.google.com/macros/s/test-deployment/exec', GOOGLE_FORMS_SHARED_SECRET:secret, TURNSTILE_SECRET_KEY:'test-only-turnstile', TURNSTILE_EXPECTED_HOSTNAME:'primeview.test', RESEND_API_KEY:'test-only-resend' };
+const env = { CONTACT_NOTIFICATION_PROVIDER:'resend', GOOGLE_APPS_SCRIPT_URL:'https://script.google.com/macros/s/test-deployment/exec', GOOGLE_FORMS_SHARED_SECRET:secret, TURNSTILE_SECRET_KEY:'test-only-turnstile', TURNSTILE_EXPECTED_HOSTNAME:'primeview.test', RESEND_API_KEY:'test-only-resend' };
 
 function googleFixture() {
-  const state = { now:Date.now(), rows:[], responses:new Map(), submissions:0, failSubmit:false, failSaveAfterSubmit:false, emailCalls:0, googleCalls:0, turnstileCalls:0, turnstile:true, hostname:'primeview.test', action:'contact', emailOk:true, emailThrows:false, responseLost:false, redirects:false, nextRedirect:null };
+  const state = { mailThrows:false, mailSaveFails:false, now:Date.now(), rows:[], responses:new Map(), submissions:0, failSubmit:false, failSaveAfterSubmit:false, emailCalls:0, googleCalls:0, turnstileCalls:0, turnstile:true, hostname:'primeview.test', action:'contact', emailOk:true, emailThrows:false, responseLost:false, redirects:false, nextRedirect:null };
   const properties = new Map([['GOOGLE_FORMS_SHARED_SECRET',secret],['GOOGLE_FORM_ID','test-form'],['FORM_ITEM_MAP',JSON.stringify(Object.fromEntries(fields.map((f,i)=>[f,i+1])))],['INTEGRATION_LEDGER_SHEET_ID','test-ledger']]);
   const titles = ['Nome','E-mail','WhatsApp','Perfil do cliente','Serviço de interesse','Mensagem'];
   const items = fields.map((field,i)=>{
@@ -25,13 +25,17 @@ function googleFixture() {
       state.submissions++;if(state.failSubmit)throw Error('simulated uncertainty');const id='form-response-'+state.submissions;const saved={getId:()=>id,getItemResponses:()=>responses};state.responses.set(id,saved);return saved;
     }};return draft;
   }};
-  const sheet={getLastRow:()=>state.rows.length,appendRow:r=>state.rows.push([...r]),setFrozenRows:()=>{},getParent:()=>({getUrl:()=> 'https://example.test/ledger'}),getRange:(row,col,count=1,width=1)=>({
-    getValues:()=>state.rows.slice(row-1,row-1+count).map(r=>r.slice(col-1,col-1+width)),
-    setValues:rows=>{if(state.failSaveAfterSubmit&&state.submissions){state.failSaveAfterSubmit=false;throw Error('Simulated ledger write failure')}rows.forEach((r,i)=>{state.rows[row-1+i]=[...r]})},
-    createTextFinder:id=>({matchEntireCell(){return this},findNext:()=>{const i=state.rows.findIndex((r,n)=>n>=row-1&&r[col-1]===id);return i<0?null:{getRow:()=>i+1}}})
-  })};
-  const spreadsheet={getSheetByName:()=>sheet,insertSheet:()=>sheet};let locked=false;const nonces=new Map();
+  const makeSheet=(rows)=>({getLastRow:()=>rows.length,appendRow:r=>rows.push([...r]),setFrozenRows:()=>{},getParent:()=>({getUrl:()=> 'https://example.test/ledger'}),getRange:(row,col,count=1,width=1)=>({
+    getValues:()=>rows.slice(row-1,row-1+count).map(r=>r.slice(col-1,col-1+width)),
+    setValues:updates=>{if(state.failSaveAfterSubmit&&state.submissions){state.failSaveAfterSubmit=false;throw Error('Simulated ledger write failure')}updates.forEach((r,i)=>{rows[row-1+i]=[...r]})},
+    createTextFinder:id=>({matchEntireCell(){return this},findNext:()=>{const i=rows.findIndex((r,n)=>n>=row-1&&r[col-1]===id);return i<0?null:{getRow:()=>i+1}}})
+  })});
+  state.mailRows=[];state.mailMessages=[];state.mailQuota=100;
+  const sheet=makeSheet(state.rows);let emailSheet;
+  const spreadsheet={getSheetByName:name=>name==='AvisosEmail'?emailSheet:sheet,insertSheet:name=>{if(name==='AvisosEmail'){emailSheet=makeSheet(state.mailRows);return emailSheet}return sheet}};let locked=false;const nonces=new Map();
   const ctx=vm.createContext({ console:{log(){}}, Date:class extends Date{static now(){return state.now}},
+    ScriptApp:{AuthMode:{FULL:'FULL'},requireAllScopes(){}},
+    MailApp:{getRemainingDailyQuota:()=>state.mailQuota,sendEmail:message=>{state.mailMessages.push(message);if(state.mailThrows)throw Error('private details');if(state.mailSaveFails)state.failSaveAfterSubmit=true;}},
     UrlFetchApp:{fetch:(url,options)=>{if(!state.ntfyFetch)throw Error('Unexpected Google fetch');return state.ntfyFetch(url,options)}},
     PropertiesService:{getScriptProperties:()=>({getProperty:k=>properties.get(k),setProperty:(k,v)=>properties.set(k,v),deleteProperty:k=>properties.delete(k)})},
     FormApp:{openById:()=>form,getActiveForm:()=>form}, SpreadsheetApp:{openById:()=>spreadsheet,flush(){}},
@@ -196,7 +200,7 @@ test('Google transport diagnostics distinguish POST, result GET, and unexpected 
 });
 
 test('ntfy publishes JSON directly from Cloudflare and deduplicates confirmed sends',async t=>{
-  const g=googleFixture(),id=randomUUID(),config={...env,NTFY_TOPIC:'test-only-topic'};
+  const g=googleFixture(),id=randomUUID(),config={...env,CONTACT_NOTIFICATION_PROVIDER:'ntfy',NTFY_TOPIC:'test-only-topic'};
   let calls=0;
   t.mock.method(globalThis,'fetch',async(url,options)=>{
     if(String(url)!=='https://ntfy.sh/') return g.mockFetch(url,options);
@@ -214,7 +218,7 @@ test('ntfy publishes JSON directly from Cloudflare and deduplicates confirmed se
 
 test('direct ntfy failures preserve Forms and uncertain sends retain their lease',async t=>{
   for(const mode of ['http','redirect','malformed','wrong-topic','throw']){
-    const g=googleFixture(),id=randomUUID(),config={...env,NTFY_TOPIC:'test-only-topic'};let calls=0;
+    const g=googleFixture(),id=randomUUID(),config={...env,CONTACT_NOTIFICATION_PROVIDER:'ntfy',NTFY_TOPIC:'test-only-topic'};let calls=0;
     const logs=[];const logger=t.mock.method(console,'error',(...args)=>logs.push(args));
     const mock=t.mock.method(globalThis,'fetch',async(url,options)=>{
       if(String(url)!=='https://ntfy.sh/')return g.mockFetch(url,options);
@@ -240,7 +244,7 @@ test('ntfy action rejects untrusted topics, missing records and unsigned request
 });
 
 test('lost confirmation response does not republish when Google persisted sent',async t=>{
-  const g=googleFixture(),id=randomUUID(),config={...env,NTFY_TOPIC:'test-only-topic'};let calls=0,lost=true;
+  const g=googleFixture(),id=randomUUID(),config={...env,CONTACT_NOTIFICATION_PROVIDER:'ntfy',NTFY_TOPIC:'test-only-topic'};let calls=0,lost=true;
   t.mock.method(globalThis,'fetch',async(url,init)=>{
     if(String(url)==='https://ntfy.sh/'){calls++;return Response.json({event:'message',topic:config.NTFY_TOPIC,id:'notice-1'})}
     const result=await g.mockFetch(url,init);
@@ -254,7 +258,7 @@ test('lost confirmation response does not republish when Google persisted sent',
 test('missing notification provider or invalid ntfy topic does not block Forms or publish',async t=>{
   const g=googleFixture();t.mock.method(globalThis,'fetch',g.mockFetch);
   for(const topic of [undefined,'bad/topic','with spaces','a'.repeat(65)]) {
-    const response=await sendContact({}, {...env,RESEND_API_KEY:undefined,NTFY_TOPIC:topic});
+    const response=await sendContact({}, {...env,CONTACT_NOTIFICATION_PROVIDER:'ntfy',RESEND_API_KEY:undefined,NTFY_TOPIC:topic});
     assert.equal(response.status,200);assert.equal((await response.json()).notification,'pending');
   }
   assert.equal(g.state.submissions,4);assert.equal(g.state.emailCalls,0);
@@ -273,7 +277,42 @@ test('ntfy acknowledgement persistence failure remains uncertain, not sent',()=>
 test('ntfy rate limit exposes only safe numeric diagnostics and never retries',async t=>{
  let calls=0;
  t.mock.method(globalThis,'fetch',async()=>{calls++;return Response.json({code:42901,error:'private-topic-secret'},{status:429,headers:{'Retry-After':'120'}})});
- const result=await publishNtfyJson({NTFY_TOPIC:'test-only-topic'});
+ const result=await publishNtfyJson({CONTACT_NOTIFICATION_PROVIDER:'ntfy',NTFY_TOPIC:'test-only-topic'});
  assert.deepEqual(result,{code:'http_error',httpStatus:429,retryAfterSeconds:120,providerCode:42901});assert.equal(calls,1);
  assert(!JSON.stringify(result).includes('private'));
+});
+
+
+test('Google email is default, independent of old ntfy state, and sends once',async t=>{
+ const g=googleFixture(),id=randomUUID();t.mock.method(globalThis,'fetch',g.mockFetch);
+ const config={...env,CONTACT_NOTIFICATION_PROVIDER:undefined,NTFY_TOPIC:'test-only-topic'};
+ g.invoke('submit',id,{values:contact,mailFrom:'PrimeView',mailTo:'test@example.com'});
+ g.invoke('email_result',id,{delivered:true,emailId:'old-ntfy-id'});
+ assert.equal(await notifyContact(config,id),'sent');assert.equal(await notifyContact(config,id),'sent');
+ assert.equal(g.state.mailMessages.length,1);assert.equal(g.state.mailMessages[0].to,'primeviewfilmes@gmail.com');
+ for(const value of Object.values(contact))assert(!g.state.mailMessages[0].body.includes(value));
+ assert.equal(g.state.submissions,1);assert.equal(g.state.mailRows[1][5],'sent');assert.equal(g.state.rows[1][10],'old-ntfy-id');
+});
+
+test('Google email quota, uncertain send and failed persistence never duplicate contacts or mail',async t=>{
+ for(const mode of ['quota','throw','save']){
+  const g=googleFixture(),id=randomUUID();const config={...env,CONTACT_NOTIFICATION_PROVIDER:'google_email'};
+  if(mode==='quota')g.state.mailQuota=0;if(mode==='throw')g.state.mailThrows=true;if(mode==='save')g.state.mailSaveFails=true;
+  const mock=t.mock.method(globalThis,'fetch',g.mockFetch);
+  const response=await sendContact({requestId:id},config);assert.equal(response.status,200);assert.equal((await response.json()).notification,'pending');
+  assert.equal(await notifyContact(config,id),'pending');assert.equal(g.state.submissions,1);assert.equal(g.state.mailMessages.length,mode==='quota'?0:1);
+  mock.mock.restore();
+ }
+});
+
+test('email setup test sends once without creating any form response',()=>{
+ const g=googleFixture();g.ctx.autorizarETestarEmail();g.ctx.autorizarETestarEmail();
+ assert.equal(g.state.mailMessages.length,1);assert.equal(g.state.submissions,0);assert.equal(g.state.rows.length,0);
+});
+
+test('Google email requires authenticated confirmed contact and does not resend stale contacts',()=>{
+ const g=googleFixture(),id=randomUUID();assert.equal(g.invoke('notify_email',id).ok,false);
+ g.invoke('submit',id,{values:contact,mailFrom:'PrimeView',mailTo:'test@example.com'});
+ const e=g.signed('notify_email',id);assert.equal(g.raw({...e,signature:'0'.repeat(64)}).ok,false);
+ g.state.now+=24*3600000+1;assert.equal(g.invoke('notify_email',id).emailState,'expired');assert.equal(g.state.mailMessages.length,0);
 });

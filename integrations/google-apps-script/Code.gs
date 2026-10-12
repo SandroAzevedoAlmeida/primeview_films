@@ -128,7 +128,7 @@ function doPost(event) {
     const payload = JSON.parse(envelope.payload);
     if (payload.version !== 1 || !PV_UUID.test(payload.requestId || '') || !PV_UUID.test(payload.nonce || '') || !Number.isFinite(payload.sentAt) || Math.abs(Date.now() - payload.sentAt) > 300000) throw new Error('authentication');
     requestId = payload.requestId;
-    const actions = ['submit', 'claim_email', 'email_result', 'pending_notifications', 'health', 'notify_ntfy'];
+    const actions = ['submit', 'claim_email', 'email_result', 'pending_notifications', 'health', 'notify_ntfy', 'notify_email'];
     if (actions.indexOf(payload.action) === -1) throw new Error('authentication');
     lock = LockService.getScriptLock();
     if (!lock.tryLock(5000)) return pvReply({ ok:false, requestId:requestId, code:'busy' });
@@ -180,6 +180,7 @@ function doPost(event) {
       return pvReply({ ok:true, requestId:requestId, googleResponseId:record.data[3], emailState:record.data[5] });
     }
     if (!record || record.data[2] !== 'submitted') return pvReply({ ok:false, requestId:requestId, code:'verification_pending' });
+    if (payload.action === 'notify_email') return pvReply({ ok:true, requestId:requestId, emailState:pvSendEmail(props, record) });
     if (payload.action === 'email_result') {
       if (record.data[5] !== 'sent') {
         if (payload.delivered === true && typeof payload.emailId === 'string' && /^[A-Za-z0-9_-]{1,100}$/.test(payload.emailId)) {
@@ -329,4 +330,64 @@ function diagnosticarNtfySemEnviar() {
     console.log(check[0] + '_segundos', Math.round((Date.now() - start) / 1000));
   });
   console.log('diagnostico_concluido_sem_publicacao');
+}
+
+
+// Separate durable ledger: ntfy success/failure must never suppress an email.
+function pvEmailLedger(props) {
+  const book = SpreadsheetApp.openById(props.getProperty('INTEGRATION_LEDGER_SHEET_ID'));
+  let sheet = book.getSheetByName('AvisosEmail');
+  if (!sheet) sheet = book.insertSheet('AvisosEmail');
+  if (!sheet.getLastRow()) { sheet.appendRow(PV_HEADERS); sheet.setFrozenRows(1); }
+  if (JSON.stringify(sheet.getRange(1, 1, 1, PV_HEADERS.length).getValues()[0]) !== JSON.stringify(PV_HEADERS)) throw new Error('ledger');
+  return sheet;
+}
+
+// Called only under doPost's script lock, after authentication and confirmed Forms record.
+function pvSendEmail(props, contactRecord) {
+  const sheet = pvEmailLedger(props);
+  let record = pvFind(sheet, contactRecord.data[0]);
+  if (record && record.data[5] === 'sent') return 'sent';
+  // MailApp has no idempotency key: an uncertain send is never retried automatically.
+  if (record && record.data[5] === 'sending') return 'sending';
+  if (Date.now() - Number(contactRecord.data[4]) > 24 * 60 * 60 * 1000) return 'expired';
+  if (MailApp.getRemainingDailyQuota() < 1) { console.log('email_quota_unavailable'); return 'pending'; }
+  const data = contactRecord.data.slice();
+  data[5] = 'sending'; data[6] = Date.now(); data[7] = 0;
+  data[8] = 'Google MailApp'; data[9] = 'primeviewfilmes@gmail.com'; data[10] = '';
+  if (!record) { sheet.appendRow(data); record = { row:sheet.getLastRow(), data:data }; SpreadsheetApp.flush(); }
+  else { record.data = data; pvSave(sheet, record); }
+  try {
+    MailApp.sendEmail({
+      to: 'primeviewfilmes@gmail.com', name: 'PrimeView Filmes',
+      subject: 'Novo contato pelo site - PrimeView Filmes',
+      body: 'Uma nova solicitacao foi registrada pelo site. Consulte as respostas no Google Forms ou na planilha vinculada. Este aviso nao depende do ntfy.'
+    });
+    record.data[5] = 'sent'; record.data[10] = 'mailapp-accepted';
+    pvSave(sheet, record);
+    console.log('email_accepted_by_google');
+    return 'sent';
+  } catch (error) {
+    console.log('email_delivery_unconfirmed');
+    return 'sending';
+  }
+}
+
+// Owner-only initial test, once. No Forms submission, client data or ntfy request.
+function autorizarETestarEmail() {
+  ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL);
+  const lock = LockService.getScriptLock(); lock.waitLock(5000);
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const previous = props.getProperty('EMAIL_SETUP_TEST_STATE');
+    if (previous === 'sent') { console.log('email_teste_ja_enviado_confira_caixa_e_spam'); return; }
+    if (previous === 'sending') { console.log('email_teste_incerto_nao_reenviado'); return; }
+    if (MailApp.getRemainingDailyQuota() < 1) { console.log('email_quota_unavailable'); return; }
+    props.setProperty('EMAIL_SETUP_TEST_STATE', 'sending');
+    try {
+      MailApp.sendEmail({to:'primeviewfilmes@gmail.com', name:'PrimeView Filmes', subject:'Teste de aviso - PrimeView Filmes', body:'O envio de avisos por e-mail da PrimeView esta em teste. Nenhum contato novo foi criado. Confirme o recebimento desta mensagem.'});
+      props.setProperty('EMAIL_SETUP_TEST_STATE', 'sent');
+      console.log('email_teste_aceito_pelo_google_confira_caixa_e_spam');
+    } catch (error) { console.log('email_teste_incerto_nao_reenviar'); }
+  } finally { lock.releaseLock(); }
 }

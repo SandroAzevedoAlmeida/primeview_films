@@ -1,5 +1,9 @@
 # Contato: Google Forms, validação e notificações
 
+## Estado atual - email principal (12/10/2026)
+
+Usuario priorizou email e confirmou primeviewfilmes@gmail.com. Implementado google_email por padrao, via acao HMAC notify_email e Google MailApp. Ntfy fica opcional, sem envio no modo principal. Aba AvisosEmail separa o estado de email do antigo Controle. Guia: docs/ativar-email-google.md. 29 testes locais passaram; entrega real ainda depende de atualizar Code.gs/manifesto no Google, autorizar script.send_mail, executar autorizarETestarEmail, confirmar caixa/spam e atualizar a implantacao existente. Nenhum email real foi enviado pelo assistente nesta etapa. Historico abaixo foi superado por esta decisao.
+
 ## Fluxo atual: ntfy direto em JSON (12/10/2026)
 
 Cloudflare Pages Functions publica POST JSON em https://ntfy.sh/ usando o segredo NTFY_TOPIC existente. Google continua responsavel pelo Forms e pelo controle: claim_email reserva a tentativa, email_result persiste a confirmacao. A acao notify_ntfy do Apps Script permanece disponivel por compatibilidade, mas o site nao a chama. Nao e necessario alterar propriedades nem reimplantar o Apps Script para essa mudanca.

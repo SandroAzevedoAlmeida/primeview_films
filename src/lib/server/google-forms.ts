@@ -1,4 +1,5 @@
 export interface GoogleEnv {
+  CONTACT_NOTIFICATION_PROVIDER?: string;
   GOOGLE_APPS_SCRIPT_URL?: string;
   GOOGLE_FORMS_SHARED_SECRET?: string;
   RESEND_API_KEY?: string;
@@ -65,7 +66,18 @@ export async function callGoogle(env: GoogleEnv, action: string, requestId: stri
 }
 
 export async function notifyContact(env: GoogleEnv, requestId: string): Promise<'sent' | 'pending'> {
-  if (env.NTFY_TOPIC) return notifyNtfy(env, requestId);
+  const provider = env.CONTACT_NOTIFICATION_PROVIDER ?? 'google_email';
+  if (provider === 'google_email') {
+    try {
+      const result = await callGoogle(env, 'notify_email', requestId);
+      return result.emailState === 'sent' ? 'sent' : 'pending';
+    } catch {
+      console.error('contact_email_failure', { code: 'google_email_unconfirmed' });
+      return 'pending';
+    }
+  }
+  if (provider === 'ntfy') return notifyNtfy(env, requestId);
+  if (provider !== 'resend') return 'pending';
   if (!env.RESEND_API_KEY) return 'pending';
   try {
     const claim = await callGoogle(env, 'claim_email', requestId);
