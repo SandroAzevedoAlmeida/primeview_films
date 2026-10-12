@@ -181,7 +181,7 @@ test('Google transport diagnostics distinguish POST, result GET, and unexpected 
   mock.mock.restore();
   for(const mode of ['network','redirect','read']) {
     let calls=0;
-    const m=t.mock.method(globalThis,'fetch',async(url,init)=>{
+    const m=t.mock.method(globalThis,'fetch',async(_url,init)=>{
       calls++;
       if(calls===1)return new Response(null,{status:302,headers:{Location:'https://script.googleusercontent.com/result'}});
       assert.equal(init.method,'GET');assert.equal(init.redirect,'manual');assert.equal(init.body,undefined);
