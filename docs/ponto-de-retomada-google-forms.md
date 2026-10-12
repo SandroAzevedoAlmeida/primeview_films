@@ -1,5 +1,9 @@
 # Ponto de retomada — integração Google Forms
 
+## Ultima tentativa autorizada - 12/10/2026, aproximadamente 20:11 local
+
+Usuario pediu uma tentativa agora e informou limite de 250 mensagens/dia. Uma unica publicacao JSON executada na Cloudflare retornou http_error / HTTP 522, sem providerCode nem Retry-After. Nao confirmou aviso, nao criou contato. Isto difere do 429 anterior: a cota diaria existe, mas nao foi comprovada como causa. Fonte: https://docs.ntfy.sh/publish/#limitations . O limite diario por visitante reinicia a meia-noite UTC conforme https://docs.ntfy.sh/config/#message-limits ; isso nao garante resolver uma falha de conexao. Endpoint temporario ntfy-check e token local removidos. Nao repetir automaticamente nem reimplantar commit temporario 02837fc.
+
 ## Atualizacao mais recente - ntfy direto JSON em producao
 
 Usuario autorizou implementar e testar automaticamente. Site agora usa Cloudflare -> POST https://ntfy.sh/ com JSON; Google mantem Forms e reserva/confirmacao. Nao apagar projeto, registros ou segredos. Nao precisa atualizar Apps Script.
