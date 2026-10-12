@@ -178,3 +178,18 @@ section[id], .hero { scroll-margin-top:var(--pv-header-height); }
 @media(prefers-reduced-motion:reduce) {
 	.virtual-card,.virtual-card::after { animation:none; }
 }
+
+/* Phone-only corrections: keep the existing tablet/desktop composition. */
+@media(max-width:767px) {
+	.contact-layout { grid-template-columns:minmax(0,1fr); gap:36px; }
+	.contact-layout > *, .form-grid > * { min-width:0; }
+	.form-grid { grid-template-columns:minmax(0,1fr); }
+	.contact-form { padding:20px; }
+	.contact-form input,.contact-form select,.contact-form textarea { min-width:0; max-width:100%; }
+	.form-actions .button { max-width:100%; white-space:normal; }
+	.virtual-card-composition { --card-width:100%; width:100%; max-width:520px; gap:24px; transform:none; }
+	.virtual-card-back,.virtual-card-front { justify-self:center; animation:none; transform:none; }
+	.social-links a { min-width:0; }
+	.social-links small,.footer-inner > a { overflow-wrap:anywhere; }
+	.section h2,.statement h2,.tour-band h2,.cta-band h2 { overflow-wrap:anywhere; }
+}

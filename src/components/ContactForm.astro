@@ -18,6 +18,12 @@ const turnstileSiteKey = import.meta.env.PUBLIC_TURNSTILE_SITE_KEY;
   <div class="form-actions"><button class="button button-gold" type="submit" data-submit>Enviar solicitação <span aria-hidden="true">↗</span></button><p class="form-status" role="status" data-form-status></p></div>
   <ContactValidationDialog />
 </form>
+{turnstileSiteKey && <script is:inline>
+  // Choose the compact widget before implicit rendering on narrow phones.
+  if (window.matchMedia('(max-width:400px)').matches) {
+    document.querySelector('[data-contact-form] .cf-turnstile')?.setAttribute('data-size', 'compact');
+  }
+</script>}
 {turnstileSiteKey && <script is:inline src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>}
 
 <script>
