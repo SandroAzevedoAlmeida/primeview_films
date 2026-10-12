@@ -199,7 +199,7 @@ test('ntfy replaces Resend, sends no client data, and confirmed retries do not n
   let calls=0;
   t.mock.method(globalThis,'fetch',async(url,init)=>{
     if(String(url)==='https://ntfy.sh/test-only-topic') {
-      calls++;assert.equal(init.redirect,'error');
+      calls++;assert.equal(init.redirect,'manual');
       assert.equal(init.body,'Nova solicitação de orçamento recebida. Consulte a planilha.');
       return Response.json({id:'ntfy-test-id',event:'message',topic:config.NTFY_TOPIC});
     }
@@ -210,14 +210,16 @@ test('ntfy replaces Resend, sends no client data, and confirmed retries do not n
   assert.equal(calls,1);assert.equal(g.state.submissions,1);assert.equal(g.state.emailCalls,0);
 });
 
-test('ntfy failure, malformed acknowledgement, and timeout preserve the Google record',async t=>{
-  for(const mode of ['failure','malformed','timeout']) {
+test('ntfy failure, redirect, malformed acknowledgement, and timeout preserve the Google record',async t=>{
+  for(const mode of ['failure','redirect','malformed','timeout']) {
     const g=googleFixture(),id=randomUUID(),config={...env,RESEND_API_KEY:undefined,NTFY_TOPIC:'test-only-topic'};
     let calls=0;
     const mock=t.mock.method(globalThis,'fetch',async(url,init)=>{
       if(String(url).startsWith('https://ntfy.sh/')) {
         calls++;
+        assert.equal(init.redirect,'manual');
         if(mode==='timeout') throw Error('timeout');
+        if(mode==='redirect') return new Response(null,{status:302,headers:{Location:'https://untrusted.test'}});
         return mode==='failure'?new Response('',{status:429}):Response.json({id:'wrong-ack'});
       }
       return g.mockFetch(url,init);
@@ -225,7 +227,8 @@ test('ntfy failure, malformed acknowledgement, and timeout preserve the Google r
     const response=await sendContact({requestId:id},config);
     assert.equal(response.status,200);assert.equal((await response.json()).notification,'pending');
     assert.equal(g.state.submissions,1);assert.equal(g.state.emailCalls,0);
-    if(mode!=='failure') { assert.equal(await notifyContact(config,id),'pending');assert.equal(calls,1); }
+    if(mode!=='failure' && mode!=='redirect') { assert.equal(await notifyContact(config,id),'pending');assert.equal(calls,1); }
+    assert.equal(calls,1);
     mock.mock.restore();
   }
 });

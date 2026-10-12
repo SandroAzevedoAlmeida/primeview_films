@@ -100,7 +100,9 @@ async function notifyNtfy(env: GoogleEnv, requestId: string): Promise<'sent' | '
     if (claim.emailState === 'sent') return 'sent';
     if (claim.emailState !== 'claimed') return 'pending';
     const response = await fetch(`https://ntfy.sh/${env.NTFY_TOPIC}`, {
-      method: 'POST', redirect: 'error', signal: AbortSignal.timeout(12000),
+      // Workers rejected redirect:'error' in the production diagnostic.
+      // Inspect redirects ourselves; never forward the topic/body elsewhere.
+      method: 'POST', redirect: 'manual', signal: AbortSignal.timeout(12000),
       headers: { 'Content-Type': 'text/plain; charset=utf-8', Title: 'PrimeView Filmes' },
       body: 'Nova solicitação de orçamento recebida. Consulte a planilha.',
     });

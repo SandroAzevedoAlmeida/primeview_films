@@ -16,6 +16,12 @@ Formulário público: https://forms.gle/rokyeGjsfmNVVkmg9
 
 ## Ponto exato para continuar
 
+### Último avanço — formulário confirmado, aviso ntfy pendente
+
+Após a correção do retorno Google, o proprietário realizou o teste final e confirmou sucesso no site e registro no Forms/planilha, mas nenhum aviso no celular. A linha desse teste mostrou `email_state=sending`.
+
+Inspeção encontrou `redirect: 'error'` também no POST do ntfy, o mesmo modo que gerou TypeError na comparação real da Cloudflare. Foi substituído por `manual`; respostas não OK, inclusive 3xx, não são seguidas e deixam a notificação pendente. Testes simulados verificam envio, falhas e redirecionamentos sem vazamento do tópico para outro host. Não foi enviada notificação real automaticamente e não foi recuperada pendência antiga. A confirmação de entrega ntfy ainda precisa do teste real após implantação.
+
 ### Atualização de 11/10/2026 — diagnóstico automatizado concluído
 
 O usuário autorizou diagnosticar da forma mais automatizada possível, sem envolver dados sensíveis. Confirmou `google_state=submitted`, `email_state=pending` e `response_id` preenchido. Log real da implantação `68eb9b6` retornou `contact_google_failure: unexpected`.
