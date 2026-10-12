@@ -188,7 +188,7 @@ section[id], .hero { scroll-margin-top:var(--pv-header-height); }
 	.contact-form input,.contact-form select,.contact-form textarea { min-width:0; max-width:100%; }
 	.form-actions .button { max-width:100%; white-space:normal; }
 	.virtual-card-composition { --card-width:100%; width:100%; max-width:520px; gap:24px; transform:none; }
-	.virtual-card-back,.virtual-card-front { justify-self:center; animation:none; transform:none; }
+	.virtual-card-back,.virtual-card-front { justify-self:center; }
 	.social-links a { min-width:0; }
 	.social-links small,.footer-inner > a { overflow-wrap:anywhere; }
 	.section h2,.statement h2,.tour-band h2,.cta-band h2 { overflow-wrap:anywhere; }
