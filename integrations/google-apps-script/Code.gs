@@ -286,3 +286,47 @@ function autorizarNotificacoes() {
     }
   });
 }
+
+// Owner-only, read-only ledger inspection plus a deliberately invalid public POST.
+// Never calls submit/claim/email_result and never reads the private ntfy topic.
+function diagnosticarNtfySemEnviar() {
+  ScriptApp.requireAllScopes(ScriptApp.AuthMode.FULL);
+  console.log('diagnostico_ntfy_v1');
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const sheet = SpreadsheetApp.openById(props.getProperty('INTEGRATION_LEDGER_SHEET_ID')).getSheetByName('Controle');
+    if (!sheet || sheet.getLastRow() < 2) console.log('controle_sem_registros');
+    else {
+      const row = sheet.getRange(sheet.getLastRow(), 1, 1, PV_HEADERS.length).getValues()[0];
+      const google = ['processing','uncertain','submitted'].indexOf(row[2]) !== -1 ? row[2] : 'unknown';
+      const notification = ['pending','sending','sent','expired'].indexOf(row[5]) !== -1 ? row[5] : 'unknown';
+      console.log('ultimo_google_state', google);
+      console.log('ultimo_email_state', notification);
+      console.log('reserva_ativa', Number(row[7]) > Date.now());
+      console.log('confirmacao_ntfy_gravada', Boolean(row[10]));
+    }
+  } catch (error) { console.log('controle_leitura_falhou'); }
+  const checks = [
+    ['ntfy_get', 'https://ntfy.sh/v1/health', { method:'get' }],
+    // A topic is required by the JSON API. {} cannot publish a message.
+    ['ntfy_post_sem_topico', 'https://ntfy.sh/', { method:'post', contentType:'application/json', payload:'{}' }]
+  ];
+  checks.forEach(function(check) {
+    const start = Date.now();
+    const options = check[2]; options.followRedirects = false; options.muteHttpExceptions = true;
+    try {
+      const response = UrlFetchApp.fetch(check[1], options);
+      console.log(check[0] + '_status', response.getResponseCode());
+    } catch (error) {
+      const message = String(error && error.message || '').toLowerCase();
+      const reason = /permission|authoriz|permiss|autoriza/.test(message) ? 'permission'
+        : /quota|too many|limit/.test(message) ? 'quota'
+        : /timed?\s*out|timeout/.test(message) ? 'timeout'
+        : /dns|resolve/.test(message) ? 'dns'
+        : /address unavailable|connection|connect|conex/.test(message) ? 'connection' : 'unclassified';
+      console.log(check[0] + '_failure', reason);
+    }
+    console.log(check[0] + '_segundos', Math.round((Date.now() - start) / 1000));
+  });
+  console.log('diagnostico_concluido_sem_publicacao');
+}
