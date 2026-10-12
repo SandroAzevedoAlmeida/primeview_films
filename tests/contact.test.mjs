@@ -174,6 +174,26 @@ test('HTML login pages, wrong correlation, and unsafe redirects are rejected',as
   globalThis.fetch=async()=>new Response(null,{status:302,headers:{Location:'https://attacker.test/collect'}});await assert.rejects(()=>callGoogle(env,'health',id));
 });
 
+test('Google transport diagnostics distinguish POST, result GET, and unexpected redirects',async t=>{
+  const id=randomUUID();
+  const mock=t.mock.method(globalThis,'fetch',async()=>{throw Error('private network details')});
+  await assert.rejects(()=>callGoogle(env,'health',id),e=>e.code==='google_post_transport');
+  mock.mock.restore();
+  for(const mode of ['network','redirect','read']) {
+    let calls=0;
+    const m=t.mock.method(globalThis,'fetch',async(url,init)=>{
+      calls++;
+      if(calls===1)return new Response(null,{status:302,headers:{Location:'https://script.googleusercontent.com/result'}});
+      assert.equal(init.method,'GET');assert.equal(init.redirect,'manual');assert.equal(init.body,undefined);
+      if(mode==='network')throw Error('private details');
+      if(mode==='redirect')return new Response(null,{status:302,headers:{Location:'https://attacker.test'}});
+      return {ok:true,status:200,text:async()=>{throw Error('private body')}};
+    });
+    await assert.rejects(()=>callGoogle(env,'health',id),e=>e.code===({network:'google_result_transport',redirect:'google_result_redirect',read:'google_result_read'})[mode]);
+    assert.equal(calls,2);m.mock.restore();
+  }
+});
+
 test('ntfy replaces Resend, sends no client data, and confirmed retries do not notify twice',async t=>{
   const g=googleFixture(), id=randomUUID(), config={...env,RESEND_API_KEY:undefined,NTFY_TOPIC:'test-only-topic'};
   let calls=0;

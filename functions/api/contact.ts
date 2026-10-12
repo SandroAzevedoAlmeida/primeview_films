@@ -71,7 +71,7 @@ export const onRequestPost = async ({ request, env }: ContactContext) => {
     const notification = await notifyContact(env, requestId);
     return json({ success: true, status: 'recorded', requestId, notification, message: 'Solicitação registrada com sucesso.' });
   } catch (error) {
-    const knownCodes = ['authentication', 'configuration', 'redirect', 'google_unavailable', 'response_size', 'response_format', 'google_rejected', 'busy', 'replay', 'closed', 'validation', 'request_conflict', 'verification_pending'];
+    const knownCodes = ['authentication', 'configuration', 'redirect', 'google_unavailable', 'response_size', 'response_format', 'google_rejected', 'busy', 'replay', 'closed', 'validation', 'request_conflict', 'verification_pending', 'google_timeout', 'google_post_transport', 'google_result_transport', 'google_result_redirect', 'google_result_read'];
     const diagnostic = error instanceof IntegrationError && knownCodes.includes(error.code) ? error.code : error instanceof Error && error.name === 'TimeoutError' ? 'timeout' : 'unexpected';
     // Never include raw error messages, signatures, URLs, secrets or contact data.
     console.error('contact_google_failure', { code: diagnostic });

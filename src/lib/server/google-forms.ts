@@ -39,14 +39,24 @@ export async function callGoogle(env: GoogleEnv, action: string, requestId: stri
   const signal = AbortSignal.timeout(20000);
   // Apps Script ContentService redirects the result to googleusercontent.com.
   // Follow only that documented GET redirect; never replay the signed POST elsewhere.
-  let response = await fetch(env.GOOGLE_APPS_SCRIPT_URL!, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload, signature }), redirect: 'manual', signal });
+  let response: Response;
+  try {
+    response = await fetch(env.GOOGLE_APPS_SCRIPT_URL!, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ payload, signature }), redirect: 'manual', signal });
+  } catch { throw new IntegrationError(signal.aborted ? 'google_timeout' : 'google_post_transport'); }
   if ([302, 303].includes(response.status)) {
-    const target = new URL(response.headers.get('Location') ?? '');
+    let target: URL;
+    try { target = new URL(response.headers.get('Location') ?? ''); }
+    catch { throw new IntegrationError('redirect'); }
     if (target.protocol !== 'https:' || target.hostname !== 'script.googleusercontent.com' || target.username || target.password) throw new IntegrationError('redirect');
-    response = await fetch(target, { method: 'GET', redirect: 'error', signal });
+    try {
+      response = await fetch(target, { method: 'GET', redirect: 'manual', signal });
+    } catch { throw new IntegrationError(signal.aborted ? 'google_timeout' : 'google_result_transport'); }
+    if (response.status >= 300 && response.status < 400) throw new IntegrationError('google_result_redirect');
   }
   if (!response.ok) throw new IntegrationError('google_unavailable');
-  const text = await response.text();
+  let text: string;
+  try { text = await response.text(); }
+  catch { throw new IntegrationError(signal.aborted ? 'google_timeout' : 'google_result_read'); }
   if (text.length > 20000) throw new IntegrationError('response_size');
   let result: GoogleResult;
   try { result = JSON.parse(text); } catch { throw new IntegrationError('response_format'); }
