@@ -10,7 +10,25 @@ export const onRequestPost = async ({request, env}: {request: Request; env: Goog
   if (hash !== tokenHash) return reply({code:'denied'}, 403);
   try {
     const result = await callGoogle(env, 'health', crypto.randomUUID());
-    return reply({code: result.ok ? 'healthy' : 'unconfirmed'});
+    let legacy = 'not_checked';
+    // Compare the old redirect mode using only a signed health operation.
+    const payload = JSON.stringify({version:1,action:'health',requestId:crypto.randomUUID(),sentAt:Date.now(),nonce:crypto.randomUUID()});
+    const encoder = new TextEncoder();
+    const key = await crypto.subtle.importKey('raw',encoder.encode(env.GOOGLE_FORMS_SHARED_SECRET!),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+    const signature = [...new Uint8Array(await crypto.subtle.sign('HMAC',key,encoder.encode(payload)))].map(b=>b.toString(16).padStart(2,'0')).join('');
+    const first = await fetch(env.GOOGLE_APPS_SCRIPT_URL!,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({payload,signature}),redirect:'manual',signal:AbortSignal.timeout(20000)});
+    if ([302,303].includes(first.status)) {
+      const target = new URL(first.headers.get('Location') ?? '');
+      if(target.protocol !== 'https:' || target.hostname !== 'script.googleusercontent.com' || target.username || target.password) return reply({code:'redirect'},502);
+      try {
+        const old = await fetch(target,{method:'GET',redirect:'error',signal:AbortSignal.timeout(20000)});
+        const body = await old.json() as {ok?:boolean};
+        legacy = body.ok === true ? 'healthy' : 'unconfirmed';
+      } catch(error) {
+        legacy = error instanceof TypeError ? 'type_error' : 'failed';
+      }
+    }
+    return reply({code: result.ok ? 'healthy' : 'unconfirmed',legacy});
   } catch(error) {
     const allowed = ['authentication','configuration','redirect','google_unavailable','response_size','response_format','google_rejected','busy','replay','google_timeout','google_post_transport','google_result_transport','google_result_redirect','google_result_read'];
     return reply({code:error instanceof IntegrationError && allowed.includes(error.code) ? error.code : 'unexpected'}, 502);
