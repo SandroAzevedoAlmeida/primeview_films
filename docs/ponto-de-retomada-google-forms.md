@@ -1,5 +1,21 @@
 # Ponto de retomada — integração Google Forms
 
+## Atualiza??o de 12/10/2026 ? falha ntfy isolada em produ??o
+
+O propriet?rio autorizou todos os testes necess?rios. Este resultado substitui as pend?ncias antigas abaixo.
+
+- 21 testes automatizados passaram; build e Astro check passaram (zero erros/avisos).
+- Site e p?gina de privacidade: HTTP 200.
+- Diagn?stico tempor?rio autenticado executado dentro da Cloudflare: chamada assinada `health` ao Apps Script passou, sem criar contatos.
+- GET p?blico `https://ntfy.sh/v1/health`: HTTP 200 tanto localmente como na Cloudflare.
+- Duas tentativas de publicar aviso t?cnico gen?rico no t?pico j? configurado expiraram em 12 segundos. Com limite de 25 segundos, o POST retornou **HTTP 522**. N?o houve confirma??o de aceita??o da mensagem. Nenhum contato foi criado por esses testes.
+- O t?pico passou na valida??o de formato; isso n?o comprova que seja o mesmo inscrito no celular. Seu valor e os segredos n?o foram extra?dos nem registrados.
+- A falha atual est? no POST Cloudflare ? ntfy.sh. N?o ? evid?ncia de falha no Forms ou no captcha. `sending` ? conservado quando o envio n?o pode ser confirmado; n?o significa entrega no telefone.
+- H? relato compat?vel no reposit?rio oficial: https://github.com/binwiederhier/ntfy/issues/1832 . Bloqueio de IP compartilhado ? uma hip?tese, n?o causa comprovada para esta conta. GET 200 n?o comprova que o POST funcione.
+- Pr?xima solu??o a avaliar: enviar o aviso pelo Apps Script, que exige altera??o e autoriza??o/implanta??o na conta Google, ou usar outro servi?o de notifica??es. Aumentar o timeout apenas revelou HTTP 522; n?o corrigiu a entrega.
+- O endpoint tempor?rio `functions/api/ntfy-diagnostic.ts` e o token local foram removidos ao encerrar o diagn?stico. N?o reimplantar os commits tempor?rios 26c6bbc, f375263 ou 1b29355.
+
+
 Atualizado a pedido do proprietário em 10/10/2026 (America/Sao_Paulo). Pedido atual: “Salve aqui.” Retomar da conferência da planilha de controle, sem repetir envios.
 
 ## Concluído na conta Google, conforme confirmação do proprietário
