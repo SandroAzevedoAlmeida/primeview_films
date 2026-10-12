@@ -1,5 +1,11 @@
 # Contato: Google Forms, validação e notificações
 
+## Fluxo atual: ntfy direto em JSON (12/10/2026)
+
+Cloudflare Pages Functions publica POST JSON em https://ntfy.sh/ usando o segredo NTFY_TOPIC existente. Google continua responsavel pelo Forms e pelo controle: claim_email reserva a tentativa, email_result persiste a confirmacao. A acao notify_ntfy do Apps Script permanece disponivel por compatibilidade, mas o site nao a chama. Nao e necessario alterar propriedades nem reimplantar o Apps Script para essa mudanca.
+
+A publicacao faz uma unica tentativa de ate 25 segundos, sem seguir redirecionamentos. Somente resposta com event=message, topico correspondente e ID valido permite confirmar sent. Resposta incerta conserva a reserva e o contato. Falhas registram contact_ntfy_failure com codigos fixos, sem segredos. Nao ha retry agendado. POST JSON nao garante resolver conectividade. Instrucoes de migracao Google abaixo sao historicas.
+
 ## Estado e limites
 
 ### Notificações pelo ntfy (configuração atual)

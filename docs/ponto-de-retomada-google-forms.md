@@ -1,5 +1,46 @@
 # Ponto de retomada — integração Google Forms
 
+## Atualizacao mais recente - ntfy direto JSON em producao
+
+Usuario autorizou implementar e testar automaticamente. Site agora usa Cloudflare -> POST https://ntfy.sh/ com JSON; Google mantem Forms e reserva/confirmacao. Nao apagar projeto, registros ou segredos. Nao precisa atualizar Apps Script.
+
+Teste real protegido na Cloudflare passou no health autenticado Google e retornou {code:http_error,httpStatus:429,googleHealth:true} em cerca de 4,5 segundos. Aviso NAO confirmado; nenhum contato novo foi criado. HTTP 429 indica limitacao, mas a causa exata/escopo e prazo nao foram obtidos: o primeiro diagnostico nao coletou Retry-After nem codigo numerico do provedor. Nao repetir imediatamente. Codigo permanente agora registra esses campos numericos quando disponiveis, sem texto privado.
+
+Endpoint temporario ntfy-json-diagnostic e token local removidos depois do teste; nao reimplantar commit temporario b9a580c. Fluxo final ainda precisa de publicacao aceita e confirmacao no celular apos a limitacao. Testes automatizados e build/check foram executados. Historico de pausa abaixo foi superado pelo pedido de continuar.
+
+## PAUSA SOLICITADA - 12/10/2026 (estado mais recente)
+
+O proprietario pediu para salvar e continuar mais tarde. Nao executar testes ou publicacoes durante a pausa. Esta secao prevalece sobre as pendencias historicas abaixo.
+
+### Confirmado
+
+- Migracao de envio ntfy para Google Apps Script preparada e enviada ao GitHub. Codigo e manifesto foram copiados pelo proprietario ao editor Google.
+- Permissao script.external_request consta no manifesto. Inicialmente google_failure permission e ntfy_failure permission; requireAllScopes solicitou consentimento, que o proprietario concedeu.
+- Depois: google_status 204 e ntfy_failure connection. Posteriormente, nova consulta retornou google_status 204 e ntfy_status 200. A conectividade de consulta foi intermitente; GET 200 nao comprova publicacao.
+- Teste local scripts/test-ntfy-local.ps1 retornou ntfy_confirmou_publicacao e o proprietario CONFIRMOU chegada no celular. Topico e aplicativo funcionam pelo caminho local; topico nao foi compartilhado no chat.
+- O proprietario atualizou a implantacao App para a Web existente, segundo sua confirmacao. A versao/codigo efetivamente ativos ainda nao foram verificados independentemente.
+- Teste final pelo site: sucesso no site, registro no Forms/planilha, nenhum aviso no celular, email_state=SENDING. Nao reenviar o formulario nem criar contatos de teste repetidos.
+- Testes locais da migracao: 24 passaram, build e Astro check passaram. Ajustes posteriores melhoraram apenas o diagnostico/autorizacao.
+
+### Ponto exato da interface
+
+Estamos tentando consultar a execucao doPost correspondente ao ultimo teste no Apps Script. Nao e para executar configurarIntegracao ou doPost manualmente.
+
+Captura 291: lista Execucoes, linha doPost/App Web selecionada, mas clicar nao abriu detalhes segundo o usuario. Foi sugerido menu de tres pontos da linha; a captura seguinte (292) mostrou Detalhes do projeto, nao o menu nem os logs.
+
+ULTIMA ORIENTACAO: voltar pela barra lateral do Apps Script, passando o mouse nos icones para encontrar Execucoes. Pedir captura somente da janela do Apps Script (as capturas de toda a area de trabalho ficam muito pequenas). Depois identificar a execucao doPost no horario do teste e consultar estado e registros ntfy_. Ainda NAO obtivemos esses registros. Nao afirmar que a causa do envio atual esta comprovada.
+
+### Limites e cuidados para retomada
+
+- Sem acesso autenticado automatizado ao editor Google. Nao ha navegador conectado para controle. Foi possivel copiar Code.gs para a area de transferencia do Windows, mas isso nao atualiza o editor remoto. Nao presumir que a area de transferencia ainda contem o codigo.
+- Manifesto: forms, spreadsheets e script.external_request; nao precisa trocar segredos.
+- Codigo de diagnostico autorizarNotificacoes possui ScriptApp.requireAllScopes fora do catch e consultas Google/ntfy. No editor a busca literal google_status nao funciona porque a string e montada dinamicamente; generate_204 identifica essa versao.
+- pvNotifyNtfy registra somente ntfy_http_status, ntfy_ack_invalid ou ntfy_delivery_unconfirmed. sending significa envio iniciado sem confirmacao persistente; nao comprova entrega.
+- Hipotese de bloqueio temporario de IP compartilhado: relato oficial https://github.com/binwiederhier/ntfy/issues/1832 . Nao comprovada para esta conta. Proprietario escolheu continuar com ntfy, nao migrar para email.
+- Nao contatar suporte nem enviar mensagens a terceiros sem instrucao explicita.
+- Referencias locais: docs/ativar-ntfy-google.md e docs/diagnostico-ntfy-conectividade.md.
+
+
 ## Migracao ntfy preparada em 12/10/2026
 
 Codigo local adaptado: Cloudflare chama notify_ntfy assinado; Apps Script publica e confirma o aviso. Falta o proprietario atualizar Code.gs e appsscript.json, executar autorizarNotificacoes e publicar nova versao da implantacao Google existente. Guia: docs/ativar-ntfy-google.md. A entrega real pelo Google ainda nao foi comprovada. Esta etapa substitui o proximo passo exploratorio abaixo.

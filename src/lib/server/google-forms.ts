@@ -94,6 +94,8 @@ export async function notifyContact(env: GoogleEnv, requestId: string): Promise<
 export interface NtfyPublication {
   code: 'sent' | 'topic_invalid' | 'http_error' | 'invalid_ack' | 'timeout' | 'transport';
   httpStatus?: number;
+  providerCode?: number;
+  retryAfterSeconds?: number;
   id?: string;
 }
 
@@ -106,9 +108,18 @@ export async function publishNtfyJson(env: GoogleEnv): Promise<NtfyPublication> 
     const response = await fetch('https://ntfy.sh/', {
       method: 'POST', redirect: 'manual', signal,
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ topic, title: 'PrimeView Filmes', message: 'Nova solicitacao de orcamento recebida. Consulte a planilha.' }),
+      body: JSON.stringify({ topic, title: 'PrimeView Filmes', message: 'Nova solicitação de orçamento recebida. Consulte a planilha.' }),
     });
-    if (!response.ok) return { code: 'http_error', httpStatus: response.status };
+    if (!response.ok) {
+      const failure: NtfyPublication = { code: 'http_error', httpStatus: response.status };
+      const retry = response.headers.get('Retry-After');
+      if (retry && /^\d{1,8}$/.test(retry)) failure.retryAfterSeconds = Number(retry);
+      try {
+        const body = await response.json();
+        if (body && Number.isInteger(body.code) && body.code >= 10000 && body.code <= 59999) failure.providerCode = body.code;
+      } catch { /* Only numeric provider codes are useful; never expose error text. */ }
+      return failure;
+    }
     let data;
     try { data = await response.json(); } catch { return { code: 'invalid_ack', httpStatus: response.status }; }
     if (!data || data.event !== 'message' || data.topic !== topic || typeof data.id !== 'string' || !/^[A-Za-z0-9_-]{1,100}$/.test(data.id)) return { code: 'invalid_ack', httpStatus: response.status };
@@ -128,7 +139,7 @@ async function notifyNtfy(env: GoogleEnv, requestId: string): Promise<'sent' | '
     stage = 'publish';
     const result = await publishNtfyJson(env);
     if (result.code !== 'sent') {
-      console.error('contact_ntfy_failure', { code: result.code, httpStatus: result.httpStatus });
+      console.error('contact_ntfy_failure', { code: result.code, httpStatus: result.httpStatus, providerCode: result.providerCode, retryAfterSeconds: result.retryAfterSeconds });
       if (result.code === 'http_error') await callGoogle(env, 'email_result', requestId, { delivered: false });
       return 'pending';
     }

@@ -5,7 +5,7 @@ import vm from 'node:vm';
 import { createHash, createHmac, randomUUID } from 'node:crypto';
 import { fields, profiles, services, validateContact } from '../src/lib/contact-validation.ts';
 import { onRequestPost } from '../functions/api/contact.ts';
-import { callGoogle, notifyContact } from '../src/lib/server/google-forms.ts';
+import { callGoogle, notifyContact, publishNtfyJson } from '../src/lib/server/google-forms.ts';
 
 const contact = { name:'Maria de Souza', email:'maria@example.com', phone:'(27) 98765-4321', profile:'Gastronomia', service:'Vídeos institucionais', message:'Gostaria de apresentar meu café.' };
 const secret = 'test-only-shared-secret-never-use-in-production-0123456789';
@@ -267,4 +267,13 @@ test('ntfy acknowledgement persistence failure remains uncertain, not sent',()=>
   g.state.ntfyFetch=()=>{g.state.failSaveAfterSubmit=true;return {getResponseCode:()=>200,getContentText:()=>JSON.stringify({event:'message',topic:'test-only-topic',id:'notice-1'})}};
   assert.equal(g.invoke('notify_ntfy',id,{topic:'test-only-topic'}).emailState,'sending');
   assert.equal(g.state.rows[1][5],'sending');assert.equal(g.state.submissions,1);
+});
+
+
+test('ntfy rate limit exposes only safe numeric diagnostics and never retries',async t=>{
+ let calls=0;
+ t.mock.method(globalThis,'fetch',async()=>{calls++;return Response.json({code:42901,error:'private-topic-secret'},{status:429,headers:{'Retry-After':'120'}})});
+ const result=await publishNtfyJson({NTFY_TOPIC:'test-only-topic'});
+ assert.deepEqual(result,{code:'http_error',httpStatus:429,retryAfterSeconds:120,providerCode:42901});assert.equal(calls,1);
+ assert(!JSON.stringify(result).includes('private'));
 });
