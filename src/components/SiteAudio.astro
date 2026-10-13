@@ -1,0 +1,87 @@
+<div class="site-audio" data-site-audio hidden>
+  <audio preload="none" loop data-music src="/assets/audio/prime-focus.mp3"></audio>
+  <button type="button" class="sound-toggle" data-sound-toggle aria-label="Ativar música do site" aria-pressed="false" title="Ativar música do site">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M11 5 6 9H3v6h3l5 4Z" />
+      <g class="sound-waves"><path d="M15 8a6 6 0 0 1 0 8M18 5a10 10 0 0 1 0 14" /></g>
+      <path class="sound-off" d="m16 10 5 5m0-5-5 5" />
+    </svg>
+  </button>
+  <div class="sound-details">
+    <span class="sound-caption" data-sound-caption>Ativar som</span>
+    <label class="volume-control">
+      <span class="sr-only">Volume da música</span>
+      <input type="range" min="0" max="100" value="35" step="1" data-volume aria-valuetext="35%" />
+    </label>
+  </div>
+  <span class="sr-only" role="status" data-sound-status></span>
+</div>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-site-audio]');
+  if (root) {
+    const audio = root.querySelector<HTMLAudioElement>('[data-music]')!;
+    const toggle = root.querySelector<HTMLButtonElement>('[data-sound-toggle]')!;
+    const volume = root.querySelector<HTMLInputElement>('[data-volume]')!;
+    const caption = root.querySelector<HTMLElement>('[data-sound-caption]')!;
+    const status = root.querySelector<HTMLElement>('[data-sound-status]')!;
+    let starting = false;
+    audio.volume = Number(volume.value) / 100;
+    const update = () => {
+      const playing = !audio.paused;
+      root.dataset.audible = String(playing && audio.volume > 0);
+      toggle.setAttribute('aria-pressed', String(playing));
+      const label = playing ? 'Pausar música do site' : 'Ativar música do site';
+      toggle.setAttribute('aria-label', label);
+      toggle.title = label;
+      caption.textContent = starting ? 'Carregando…' : playing ? (audio.volume > 0 ? 'Som ligado' : 'Sem volume') : 'Ativar som';
+    };
+    const failure = () => {
+      audio.pause();
+      status.textContent = 'Não foi possível tocar a música. Toque no alto-falante para tentar novamente.';
+      update();
+    };
+    toggle.addEventListener('click', async () => {
+      if (starting) return;
+      status.textContent = '';
+      if (!audio.paused) { audio.pause(); return; }
+      starting = true;
+      toggle.setAttribute('aria-busy', 'true');
+      update();
+      try { await audio.play(); } catch { failure(); }
+      finally { starting = false; toggle.removeAttribute('aria-busy'); update(); }
+    });
+    volume.addEventListener('input', () => {
+      audio.volume = Number(volume.value) / 100;
+      volume.setAttribute('aria-valuetext', `${volume.value}%`);
+      volume.style.setProperty('--volume', `${volume.value}%`);
+      update();
+    });
+    audio.addEventListener('playing', update);
+    audio.addEventListener('pause', update);
+    audio.addEventListener('error', failure);
+    update();
+    root.hidden = false;
+  }
+</script>
+
+<style>
+  .site-audio { position:fixed; left:24px; bottom:max(24px,env(safe-area-inset-bottom)); z-index:var(--pv-z-whatsapp,15); display:flex; align-items:center; gap:10px; width:204px; padding:7px 14px 7px 7px; border:1px solid rgba(212,175,55,.4); border-radius:40px; background:rgba(12,12,12,.94); color:var(--pv-gold); box-shadow:0 8px 28px #0006; backdrop-filter:blur(12px); }
+  .site-audio[hidden] { display:none; }
+  .sound-toggle { display:grid; place-items:center; flex:0 0 44px; width:44px; height:44px; padding:10px; border:1px solid transparent; border-radius:50%; background:rgba(212,175,55,.1); color:inherit; transition:background .2s,color .2s; }
+  .sound-toggle:hover { background:var(--pv-gold); color:var(--pv-black); }
+  .sound-toggle:focus-visible { outline:2px solid var(--pv-gold); outline-offset:3px; }
+  .sound-toggle svg { width:23px; height:23px; }
+  .sound-waves { display:none; }
+  [data-audible=true] .sound-waves { display:initial; }
+  [data-audible=true] .sound-off { display:none; }
+  .sound-details { flex:1; min-width:0; }
+  .sound-caption { display:block; font-size:10px; line-height:16px; letter-spacing:.1em; text-transform:uppercase; }
+  .volume-control { display:flex; align-items:center; height:28px; }
+  input[type=range] { --volume:35%; appearance:none; width:100%; min-width:0; height:28px; margin:0; border-radius:4px; background:linear-gradient(to right,var(--pv-gold) var(--volume),#555 var(--volume)); background-size:100% 4px; background-position:center; background-repeat:no-repeat; cursor:pointer; accent-color:var(--pv-gold); }
+  input[type=range]::-webkit-slider-thumb { appearance:none; width:14px; height:14px; border:2px solid #eee0b6; border-radius:50%; background:var(--pv-gold); }
+  input[type=range]::-moz-range-thumb { width:10px; height:10px; border:2px solid #eee0b6; border-radius:50%; background:var(--pv-gold); }
+  input[type=range]:focus-visible { outline:2px solid var(--pv-gold); outline-offset:7px; }
+  @media(max-width:800px) { .site-audio { left:18px; bottom:max(18px,env(safe-area-inset-bottom)); max-width:calc(100vw - 100px); } }
+  @media(prefers-reduced-motion:reduce) { .sound-toggle { transition:none; } }
+</style>
