@@ -17,7 +17,7 @@ export const portfolio: PortfolioItem[] = [
     title: "Chácara Parreiral - 50 Anos",
     slug: "chacaraparreiral-50anos",
     category: "video",
-    description: "Vídeo Comemorativo de 50 anos do bairro Chácara Parreiral",
+    description: "Video Comemorativo de 50 anos do bairro Chácara Parreiral",
     thumbnail: "/assets/portfolio/thumb-chacaraparreiral.svg",
     videoUrl: "https://www.youtube.com/embed/CfifJCXIl08",
     location: "Serra, ES",
