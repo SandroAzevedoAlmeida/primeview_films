@@ -7,6 +7,7 @@ import VirtualBusinessCard from '../components/VirtualBusinessCard.astro';
 import WhatsAppButton from '../components/WhatsAppButton.astro';
 import { company } from '../config/company';
 import { social } from '../config/social';
+import { portfolio } from '../data/portfolio';
 
 const whatsappMessage = encodeURIComponent('Olá! Vim pelo site da PrimeView Filmes e gostaria de solicitar um orçamento.');
 const whatsappUrl = `${company.whatsapp}?text=${whatsappMessage}`;
@@ -29,7 +30,7 @@ const process = [['01', 'Briefing'], ['02', 'Planejamento'], ['03', 'Captação'
     <section class="section services" id="servicos"><div class="container"><div class="section-heading"><div><p class="eyebrow">02 / O que fazemos</p><h2>Imagem com <em>intenção.</em></h2></div><p>Conteúdo pensado para apresentar espaços, fortalecer marcas e aproximar pessoas dos ambientes.</p></div><div class="service-grid">{services.map(([number, title, description]) => <article class="service-item"><span class="service-number">{number}</span><h3>{title}</h3><p>{description}</p><span class="service-arrow" aria-hidden="true">↗</span></article>)}<article class="service-item service-soon"><span class="service-number">06</span><div class="soon-label">Em breve</div><h3>Visualização com inteligência artificial</h3><p>Soluções de visualização de espaços e marcas com inteligência artificial estão em desenvolvimento.</p></article></div></div></section>
     <section class="statement"><div class="container statement-inner"><p class="eyebrow">03 / O olhar PrimeView</p><h2>O negócio pode ser o mesmo.<br /><em>A forma de apresentá-lo, não.</em></h2><div class="pillars"><span>Apresentação profissional</span><span>Percepção de valor</span><span>Autoridade digital</span><span>Experiência visual</span></div></div></section>
     <section class="section audience"><div class="container split-grid"><div><p class="eyebrow">04 / Para quem trabalhamos</p><h2>Para quem entende que<br /><em>imagem é posicionamento.</em></h2><p class="audience-copy">De lojas, supermercados, distribuidoras e papelarias a restaurantes, padarias, cafés, docerias e sorveterias. Produções também para empresas, escritórios, hospitais, clínicas, academias, salões, barbearias, escolas e casas noturnas.</p></div><div class="audience-list">{audiences.map((audience, index) => <div><span>0{index + 1}</span><strong>{audience}</strong><b aria-hidden="true">↗</b></div>)}</div></div></section>
-    <section class="section portfolio" id="portfolio"><div class="container"><div class="section-heading"><div><p class="eyebrow">05 / Portfólio</p><h2>Projetos que pedem<br /><em>um olhar atento.</em></h2></div><p>A seleção de trabalhos reais da PrimeView será apresentada aqui. Estamos preparando este espaço para receber cada produção com o contexto que ela merece.</p></div><div class="portfolio-categories" aria-label="Categorias de portfólio"><span>Vídeos</span><span>Imagens aéreas — em breve</span><span>Fotografia</span><span>Tour 360°</span></div><div class="portfolio-empty"><span class="empty-mark">PV</span><p>Portfólio em preparação</p><small>Em breve, uma seleção de produções audiovisuais da PrimeView.</small></div></div></section>
+    <section class="section portfolio" id="portfolio"><div class="container"><div class="section-heading"><div><p class="eyebrow">05 / Portfólio</p><h2>Projetos que pedem<br /><em>um olhar atento.</em></h2></div><p>A seleção de trabalhos reais da PrimeView será apresentada aqui. Estamos preparando este espaço para receber cada produção com o contexto que ela merece.</p></div><div class="portfolio-tabs" role="tablist" aria-label="Categorias de portfólio"><button class="portfolio-tab active" data-category="video" role="tab" aria-selected="true">Vídeos</button><button class="portfolio-tab" data-category="drone" role="tab" aria-selected="false">Imagens aéreas — em breve</button><button class="portfolio-tab" data-category="fotografia" role="tab" aria-selected="false">Fotografia</button><button class="portfolio-tab" data-category="tour360" role="tab" aria-selected="false">Tour 360°</button></div><div id="portfolio-content" class="portfolio-content">{portfolio.length > 0 ? <div class="portfolio-grid">{portfolio.filter(item => item.category === 'video').map((item) => <article class="portfolio-item" key={item.slug} data-video-url={item.videoUrl}><div class="portfolio-media"><img src={item.thumbnail} alt={item.title} />{item.videoUrl && <button class="play-button" aria-label={`Reproduzir: ${item.title}`}></button>}</div><div class="portfolio-info"><h3>{item.title}</h3><p>{item.description}</p><small>{item.location}</small></div></article>)}</div> : <div class="portfolio-empty"><span class="empty-mark">PV</span><p>Portfólio em preparação</p><small>Em breve, uma seleção de produções audiovisuais desta categoria.</small></div>}</div></div></section>
     <section class="section process" id="processo"><div class="container"><p class="eyebrow">06 / Como acontece</p><div class="process-layout"><h2>Do primeiro briefing<br /><em>à imagem final.</em></h2><div class="process-list">{process.map(([number, title]) => <div><span>{number}</span><strong>{title}</strong><i aria-hidden="true">↗</i></div>)}</div></div></div></section>
     <section class="tour-band"><div class="container tour-content"><p class="eyebrow">07 / Experiência imersiva</p><h2>O espaço continua<br /><em>mesmo quando você sai.</em></h2><p>Com o Tour Virtual 360°, imóveis, lojas, showrooms, escolas e academias podem ser explorados remotamente, conforme as características de cada espaço.</p><a class="button button-outline" href="#contato">Conhecer o Tour 360° <span>↗</span></a></div></section>
     <section class="cta-band"><div class="container"><p class="eyebrow">08 / Vamos conversar</p><h2>Seu projeto merece<br /><em>uma apresentação à altura.</em></h2><a class="button button-gold" href={whatsappUrl} target="_blank" rel="noopener noreferrer">Solicite seu orçamento <span>↗</span></a></div></section>
@@ -37,6 +38,106 @@ const process = [['01', 'Briefing'], ['02', 'Planejamento'], ['03', 'Captação'
     <section class="section contact" id="contato"><div class="container contact-layout"><div class="contact-heading"><p class="eyebrow">10 / Contato</p><h2>Uma boa conversa<br /><em>começa por aqui.</em></h2><p class="contact-intro">Conte o que você está construindo. A gente pensa na melhor forma de apresentar.</p></div><ContactForm /><VirtualBusinessCard /></div></section>
   </main>
   <footer class="site-footer"><div class="container footer-inner"><img src="/assets/brand/logo-primeview.png" alt="PrimeView Filmes" width="1254" height="1254" /><nav aria-label="Navegação do rodapé"><a href="#inicio">Início</a><a href="#servicos">Serviços</a><a href="#portfolio">Portfólio</a><a href="#sobre">Sobre</a><a href="#contato">Contato</a><a href="/privacidade">Privacidade</a></nav><a href={social.instagram} target="_blank" rel="noopener noreferrer">@primeview_filmes ↗</a><small>© PrimeView Filmes. Todos os direitos reservados.</small></div></footer><WhatsAppButton />
+
+  <!-- Modal para vídeos do portfólio -->
+  <dialog id="portfolio-video-modal" class="video-modal">
+    <div class="video-modal-content">
+      <button class="modal-close" aria-label="Fechar vídeo">✕</button>
+      <iframe id="portfolio-video-player" style="width: 100%; height: 80vh; border: none; border-radius: 8px;" allowfullscreen="true" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"></iframe>
+    </div>
+  </dialog>
+
+  <script is:inline define:vars={{portfolio}}>
+    const modal = document.getElementById('portfolio-video-modal');
+    const videoPlayer = document.getElementById('portfolio-video-player');
+    const modalClose = document.querySelector('.modal-close');
+    const contentContainer = document.getElementById('portfolio-content');
+
+    // Fechar modal
+    modalClose?.addEventListener('click', () => {
+      if (modal) modal.close();
+      if (videoPlayer) videoPlayer.src = '';
+    });
+
+    modal?.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.close();
+        if (videoPlayer) videoPlayer.src = '';
+      }
+    });
+
+    // Event delegation para play buttons
+    contentContainer?.addEventListener('click', (e) => {
+      const playButton = (e.target).closest('.play-button');
+      if (!playButton) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      const article = playButton.closest('.portfolio-item');
+      const videoUrl = article?.dataset?.videoUrl;
+
+      if (videoUrl && modal && videoPlayer) {
+        videoPlayer.src = videoUrl;
+        modal.showModal();
+      }
+    });
+
+    // Renderização de portfólio
+    const tabs = document.querySelectorAll('.portfolio-tab');
+
+    function renderPortfolio(category) {
+      if (!contentContainer) return;
+
+      const filtered = portfolio.filter((item) => item.category === category);
+
+      if (filtered.length === 0) {
+        contentContainer.innerHTML = `
+          <div class="portfolio-empty">
+            <span class="empty-mark">PV</span>
+            <p>Portfólio em preparação</p>
+            <small>Em breve, uma seleção de produções audiovisuais desta categoria.</small>
+          </div>
+        `;
+        return;
+      }
+
+      contentContainer.innerHTML = `
+        <div class="portfolio-grid">
+          ${filtered.map((item) => `
+            <article class="portfolio-item" data-video-url="${item.videoUrl || ''}">
+              <div class="portfolio-media">
+                <img src="${item.thumbnail}" alt="${item.title}" />
+                ${item.videoUrl ? '<button class="play-button" aria-label="Reproduzir: ' + item.title + '"></button>' : ''}
+              </div>
+              <div class="portfolio-info">
+                <h3>${item.title}</h3>
+                <p>${item.description || ''}</p>
+                <small>${item.location || ''}</small>
+              </div>
+            </article>
+          `).join('')}
+        </div>
+      `;
+    }
+
+    tabs.forEach(tab => {
+      tab.addEventListener('click', () => {
+        tabs.forEach(t => {
+          t.classList.remove('active');
+          t.setAttribute('aria-selected', 'false');
+        });
+        tab.classList.add('active');
+        tab.setAttribute('aria-selected', 'true');
+
+        const category = tab.dataset.category || 'video';
+        renderPortfolio(category);
+      });
+    });
+
+    // Renderização inicial
+    renderPortfolio('video');
+  </script>
 </BaseLayout>
 
 <style is:global>
